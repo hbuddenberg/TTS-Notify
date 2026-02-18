@@ -121,17 +121,36 @@ run_installer() {
         "all"|"coqui"|"complete")
             print_info "Installing TTS Notify v3.0.0 with CoquiTTS support..."
 
-            # Create virtual environment
-            if [ ! -d "venv312" ]; then
-                print_info "Creating Python 3.12 virtual environment..."
-                if command -v python3.12 &> /dev/null; then
-                    python3.12 -m venv venv312
-                elif python3 -c "import sys; exit(0 if sys.version_info >= (3, 12) and sys.version_info < (3, 14) else 1)"; then
-                    python3 -m venv venv312
-                else
-                    print_error "Python 3.12-3.13 required for CoquiTTS"
+            RECREATE_VENV=false
+            if [ -d "venv312" ]; then
+                if ! ./venv312/bin/python -c "import sys" &>/dev/null; then
+                    print_info "Existing venv312 is broken, recreating..."
+                    rm -rf venv312
+                    RECREATE_VENV=true
+                fi
+            else
+                RECREATE_VENV=true
+            fi
+
+            if [ "$RECREATE_VENV" = "true" ]; then
+                # Find any Python 3.10+ for CoquiTTS
+                PYTHON_CMD=""
+                for py in python3.14 python3.13 python3.12 python3.11 python3.10 python3; do
+                    if command -v $py &> /dev/null; then
+                        if $py -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+                            PYTHON_CMD=$py
+                            break
+                        fi
+                    fi
+                done
+                
+                if [ -z "$PYTHON_CMD" ]; then
+                    print_error "Python 3.10+ required for CoquiTTS"
                     return 1
                 fi
+                
+                print_info "Using Python: $($PYTHON_CMD --version)"
+                $PYTHON_CMD -m venv venv312
             fi
 
             # Activate virtual environment and install
@@ -149,15 +168,24 @@ run_installer() {
 
             # Install CoquiTTS using our new installation system
             print_info "Installing CoquiTTS and dependencies..."
-            if tts-notify --install-all; then
+            if ./venv312/bin/tts-notify --install-all; then
                 print_status "CoquiTTS installation completed"
             else
                 print_warning "CoquiTTS installation encountered issues, but basic functionality is available"
             fi
 
+            # Create global symlink
+            print_info "Creating global symlink..."
+            SYMLINK_PATH="/usr/local/bin/tts-notify"
+            if [ -L "$SYMLINK_PATH" ]; then
+                rm "$SYMLINK_PATH"
+            fi
+            ln -s "$PROJECT_DIR/venv312/bin/tts-notify" "$SYMLINK_PATH"
+            print_status "Global symlink created at $SYMLINK_PATH"
+
             # Test installation
             print_info "Testing installation..."
-            tts-notify --test-installation
+            ./venv312/bin/tts-notify --test-installation
 
             print_status "TTS Notify v3.0.0 with CoquiTTS installed successfully!"
             ;;
