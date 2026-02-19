@@ -42,6 +42,13 @@ This is a major release featuring complete CoquiTTS integration with voice cloni
   - Partial match
   - Fallback to default
 - **Voice Caching**: 75% faster detection with intelligent caching
+- **Advanced Voice Cloning**: Persistent voice profiles
+  - Clone voices from FLAC, WAV, MP3, OGG, M4A files
+  - Auto-trimming for samples >30 seconds
+  - Automatic denoising with noisereduce
+  - Audio normalization for consistent quality
+  - Voice profile storage in `~/.tts-notify/`
+  - Cross-lingual synthesis with cloned voices
 
 #### Installer Improvements
 - **Cross-platform**: macOS, Linux, Windows support
@@ -67,6 +74,13 @@ This is a major release featuring complete CoquiTTS integration with voice cloni
 - **Installer**: Removed incorrect architecture blocking code
 - **Model List API**: Fixed compatibility with TTS 0.22.0 API changes
 - **Voice Detection**: Improved caching and error handling
+- **Transformers Compatibility**: Pinned `transformers>=4.33.0,<4.38` for TTS 0.22.0
+  - Transformers 5.x removed `BeamSearchScorer` breaking CoquiTTS
+- **Audio File Path Resolution**: CLI now searches multiple locations for audio files
+  - As provided (absolute or relative to cwd)
+  - Current working directory
+  - Project root directory
+- **FLAC Support**: Voice cloning now works with FLAC audio files
 
 ### 📦 Dependencies
 

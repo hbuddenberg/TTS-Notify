@@ -192,7 +192,9 @@ Endpoints de la API:
 
 ## 🎤 Clonación de Voz
 
-Clona cualquier voz desde una muestra de audio:
+### Clonación Rápida
+
+Clona cualquier voz desde una muestra de audio para uso único:
 
 ```bash
 # Clonar voz desde muestra (6-30 segundos recomendado)
@@ -205,6 +207,51 @@ tts-notify "Mensaje feliz" \
   --engine coqui \
   --voice-sample mi_voz.wav \
   --emotion happy
+```
+
+### Clonación Avanzada (Perfiles Persistentes)
+
+Crea perfiles de voz persistentes que pueden reutilizarse:
+
+```bash
+# Crear un perfil de voz desde una muestra de audio
+tts-notify --clone-voice karina.flac --voice-name Karina --clone-language es
+
+# Usar la voz clonada (no se necesita la muestra original)
+tts-notify "Hola mundo" --engine coqui --voice "Karina"
+
+# Listar voces clonadas
+tts-notify --list-cloned-voices
+
+# Eliminar una voz clonada
+tts-notify --delete-cloned-voice Karina
+```
+
+### Características de Clonación de Voz
+
+| Característica | Descripción |
+|----------------|-------------|
+| **Auto-recorte** | Muestras >30s se recortan automáticamente a longitud óptima |
+| **Reducción de ruido** | El ruido de fondo se reduce automáticamente con noisereduce |
+| **Normalización** | Los niveles de audio se normalizan para calidad consistente |
+| **Soporte de formatos** | WAV, FLAC, MP3, OGG, M4A soportados |
+| **Almacenamiento persistente** | Perfiles guardados en `~/.tts-notify/voice-profiles/` |
+| **Multi-idioma** | Clona voz en un idioma, úsala en cualquiera de los 17 idiomas |
+
+### Mejores Prácticas de Clonación
+
+1. **Duración de muestra**: 6-30 segundos de habla clara
+2. **Calidad**: Usar audio limpio sin ruido de fondo
+3. **Contenido**: El habla natural funciona mejor que la lectura
+4. **Formato**: WAV o FLAC preferidos para mejor calidad
+
+```bash
+# Ejemplo: Clonar voz desde archivo FLAC
+tts-notify --clone-voice mi_voz.flac --voice-name MiVoz --clone-language es
+
+# Usar en diferentes idiomas (síntesis multilingüe)
+tts-notify "Bonjour le monde" --engine coqui --voice "MiVoz" --language fr
+tts-notify "Hello world" --engine coqui --voice "MiVoz" --language en
 ```
 
 ---

@@ -192,7 +192,9 @@ API Endpoints:
 
 ## 🎤 Voice Cloning
 
-Clone any voice from an audio sample:
+### Quick Voice Cloning
+
+Clone any voice from an audio sample for one-time use:
 
 ```bash
 # Clone voice from sample (6-30 seconds recommended)
@@ -205,6 +207,51 @@ tts-notify "Happy message" \
   --engine coqui \
   --voice-sample my_voice.wav \
   --emotion happy
+```
+
+### Advanced Voice Cloning (Persistent Profiles)
+
+Create persistent voice profiles that can be reused:
+
+```bash
+# Create a voice profile from audio sample
+tts-notify --clone-voice karina.flac --voice-name Karina --clone-language es
+
+# Use the cloned voice (no need for original sample)
+tts-notify "Hola mundo" --engine coqui --voice "Karina"
+
+# List cloned voices
+tts-notify --list-cloned-voices
+
+# Delete a cloned voice
+tts-notify --delete-cloned-voice Karina
+```
+
+### Voice Cloning Features
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-trimming** | Audio samples >30s are automatically trimmed to optimal length |
+| **Denoising** | Background noise is automatically reduced using noisereduce |
+| **Normalization** | Audio levels are normalized for consistent quality |
+| **Format Support** | WAV, FLAC, MP3, OGG, M4A supported |
+| **Persistent Storage** | Voice profiles saved in `~/.tts-notify/voice-profiles/` |
+| **Multi-language** | Clone voice in one language, use in any of 17 languages |
+
+### Voice Cloning Best Practices
+
+1. **Sample Length**: 6-30 seconds of clear speech
+2. **Quality**: Use clean audio without background noise
+3. **Content**: Natural speech works better than reading
+4. **Format**: WAV or FLAC preferred for best quality
+
+```bash
+# Example: Clone a voice from FLAC file
+tts-notify --clone-voice my_voice.flac --voice-name MyVoice --clone-language en
+
+# Use with different languages (cross-lingual synthesis)
+tts-notify "Bonjour le monde" --engine coqui --voice "MyVoice" --language fr
+tts-notify "Hola mundo" --engine coqui --voice "MyVoice" --language es
 ```
 
 ---
