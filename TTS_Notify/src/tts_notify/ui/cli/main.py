@@ -814,11 +814,29 @@ Installation & Testing:
                 print("   Instale con: pip install coqui-tts")
                 sys.exit(1)
 
-            # Validate audio file
+            # Validate audio file - check multiple locations
             audio_path = Path(audio_file)
-            if not audio_path.exists():
+            project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+            search_paths = [
+                audio_path,
+                Path.cwd() / audio_file,
+                project_root / audio_file,
+            ]
+
+            found_path = None
+            for search_path in search_paths:
+                if search_path.exists():
+                    found_path = search_path.resolve()
+                    break
+
+            if not found_path:
                 print(f"❌ Archivo de audio no encontrado: {audio_file}")
+                print(f"   Buscado en:")
+                for sp in search_paths:
+                    print(f"   • {sp.resolve()}")
                 sys.exit(1)
+
+            audio_path = found_path
 
             # Determine language
             clone_language = language or config.TTS_NOTIFY_DEFAULT_LANGUAGE or "es"
@@ -1077,11 +1095,29 @@ Installation & Testing:
                 print("   Instale con: pip install coqui-tts librosa soundfile")
                 sys.exit(1)
 
-            # Validate input file
+            # Validate input file - check multiple locations
             input_path = Path(input_file)
-            if not input_path.exists():
+            project_root = Path(__file__).parent.parent.parent.parent.parent.parent
+            search_paths = [
+                input_path,
+                Path.cwd() / input_file,
+                project_root / input_file,
+            ]
+
+            found_path = None
+            for search_path in search_paths:
+                if search_path.exists():
+                    found_path = search_path.resolve()
+                    break
+
+            if not found_path:
                 print(f"❌ Archivo de audio no encontrado: {input_file}")
+                print(f"   Buscado en:")
+                for sp in search_paths:
+                    print(f"   • {sp.resolve()}")
                 sys.exit(1)
+
+            input_path = found_path
 
             # Determine source and target formats
             source_format = AudioFormat(input_path.suffix.lower().lstrip("."))
