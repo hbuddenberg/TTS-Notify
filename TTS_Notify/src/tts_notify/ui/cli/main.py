@@ -434,6 +434,36 @@ Installation & Testing:
             help="Mostrar configuración MCP para Claude Desktop con rutas reales",
         )
 
+        # MCP Config Installation
+        parser.add_argument(
+            "--install-mcp",
+            nargs="?",
+            const=True,
+            metavar="CLIENT",
+            choices=["claude", "opencode", "zed", "cursor", "continue"],
+            help="Generate MCP config for specified client (claude, opencode, zed, cursor, continue)",
+        )
+        parser.add_argument(
+            "--all",
+            action="store_true",
+            dest="all_clients",
+            help="Generate configs for all supported clients (use with --install-mcp)",
+        )
+        parser.add_argument(
+            "--write",
+            nargs="?",
+            const=True,
+            metavar="PATH",
+            dest="write_config",
+            help="Write config to file (auto-detect location, or specify path)",
+        )
+        parser.add_argument(
+            "--path",
+            metavar="EXEC_PATH",
+            dest="custom_exec_path",
+            help="Custom executable path for tts-notify",
+        )
+
         # Version
         parser.add_argument(
             "--version",
@@ -2231,6 +2261,12 @@ Installation & Testing:
         if args.mcp_config:
             self.show_mcp_config()
             return
+
+        # Handle MCP Config Installation
+        if args.install_mcp:
+            from .mcp_config_generator import handle_install_mcp
+
+            sys.exit(handle_install_mcp(args))
 
         # Handle CoquiTTS management commands
         if args.list_languages:
