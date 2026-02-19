@@ -34,6 +34,130 @@ TTS Notify v2.0.0 is a complete rewrite featuring a modular architecture that ma
 - **Modern Tooling**: Black, isort, mypy, pytest integration
 - **Cross-Platform Installers**: UV-based installation for all platforms
 
+## 🎯 Quick MCP Installation
+
+### Dynamic AI Tool Detection
+
+The new `install-uv-mcp.sh` installer automatically detects your AI tools and generates MCP configurations. No manual config editing needed.
+
+```bash
+# macOS/Linux
+cd TTS_Notify
+./installers/install-uv-mcp.sh
+
+# Windows (PowerShell)
+cd TTS_Notify
+.\installers\install-uv-mcp.ps1
+```
+
+### Supported AI Tools
+
+| Tool | Config Location | Status |
+|------|-----------------|--------|
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` | ✅ Auto-detected |
+| **Claude Code** | `~/.claude/.mcp.json` | ✅ Auto-detected |
+| **OpenCode** | `~/Library/Application Support/ai.opencode.desktop/mcp.json` | ✅ Auto-detected |
+| **Zed Editor** | `~/.zed/settings.json` | ✅ Auto-detected |
+| **Cursor IDE** | `~/Library/Application Support/Cursor/User/globalStorage/mcp.json` | ✅ Auto-detected |
+| **Continue.dev** | `~/.continue/config.json` | ✅ Auto-detected |
+
+### Installation Modes
+
+The installer offers four modes:
+
+1. **Local (venv)** - Install in project virtual environment
+   ```bash
+   # Creates venv in project directory
+   # Uses UV for fast dependency installation
+   # Best for development and testing
+   ```
+
+2. **UVX (no venv)** - Global execution without virtual environment
+   ```bash
+   # Uses uvx for on-demand execution
+   # No local installation required
+   # Best for production and minimal setup
+   ```
+
+3. **Auto-Detect** - Automatically choose best option
+   ```bash
+   # Detects UV availability
+   # Falls back to standard pip if needed
+   # Recommended for most users
+   ```
+
+4. **Config-Only** - Generate MCP configs without installation
+   ```bash
+   # Skip installation
+   # Only generate configuration files
+   # Useful when TTS-Notify is already installed
+   ```
+
+### Example Configurations Generated
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "tts-notify": {
+      "command": "/path/to/python",
+      "args": ["-m", "tts_notify", "--mode", "mcp"],
+      "env": {
+        "TTS_NOTIFY_ENGINE": "macos",
+        "TTS_NOTIFY_VOICE": "Monica",
+        "TTS_NOTIFY_RATE": "175"
+      }
+    }
+  }
+}
+```
+
+**Claude Code** (`.mcp.json`):
+```json
+{
+  "tts-notify": {
+    "command": "/path/to/python",
+    "args": ["-m", "tts_notify", "--mode", "mcp"],
+    "env": {
+      "TTS_NOTIFY_ENGINE": "macos",
+      "TTS_NOTIFY_VOICE": "Monica",
+      "TTS_NOTIFY_RATE": "175"
+    }
+  }
+}
+```
+
+**Zed Editor** (`settings.json`):
+```json
+{
+  "mcp_servers": {
+    "tts-notify": {
+      "command": "/path/to/python",
+      "args": ["-m", "tts_notify", "--mode", "mcp"]
+    }
+  }
+}
+```
+
+### Post-Installation Steps
+
+1. **Restart your AI tool** - Close and reopen Claude Desktop, Claude Code, etc.
+2. **Verify MCP connection** - The TTS-Notify server should appear in your MCP tools list
+3. **Test voice output**:
+   ```
+   In Claude: "Lee en voz alta: Hola mundo"
+   In Claude Code: Use speak_text tool
+   ```
+
+### Key Features
+
+- **Automatic Detection**: Scans for 6 popular AI coding tools
+- **Safe Installation**: Creates backups of existing configs before overwriting
+- **Absolute Paths**: Uses absolute paths for reliable MCP connections
+- **Multiple Environments**: Detects venv312, venv313, venv, and test_venv
+- **UV Integration**: Leverage UV's lightning-fast package management
+- **Cross-Platform**: Works on macOS, Linux, and Windows
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -242,7 +366,27 @@ pytest --cov=src
 
 ## 🔧 Installation Scripts
 
-### Cross-Platform Installers
+### Dynamic MCP Installer (Recommended)
+
+The new `install-uv-mcp.sh` installer provides automatic AI tool detection and MCP configuration generation:
+
+```bash
+# macOS/Linux - Interactive installer
+./installers/install-uv-mcp.sh
+
+# Windows PowerShell
+.\installers\install-uv-mcp.ps1
+```
+
+**Features:**
+- Auto-detects 6 AI coding tools (Claude Desktop, Claude Code, OpenCode, Zed, Cursor, Continue)
+- Generates proper MCP configs for each detected tool
+- Supports UV/UVX for lightning-fast installation
+- Interactive mode selection (Local/UVX/Auto/Config-Only)
+- Creates backups of existing configurations
+
+### Traditional Installers
+
 ```bash
 # Main installer (Linux/macOS)
 ./installers/install.sh [development|production|mcp|all|uninstall]
@@ -252,34 +396,10 @@ installers/install.bat [mode]
 installers/install.ps1 -Mode [mode]
 
 # Specific installers
-./installers/install-cli.sh           # CLI only
-./installers/install-mcp.sh            # MCP dual-mode (Claude Code + Desktop)
-./installers/install-mcp-claude-code.sh # Claude Code specialized installer
+./installers/install-cli.sh  # CLI only
+./installers/install-mcp.sh   # MCP only
+./installers/install-mcp-claude-code.sh  # Claude Code specific
 ```
-
-### 🚀 **NEW: Claude Code Global Installation**
-The installer now supports **automatic global configuration** for Claude Code:
-
-```bash
-# Automatic detection and configuration
-./installers/install-mcp.sh
-
-# Specialized Claude Code installer (recommended)
-./installers/install-mcp-claude-code.sh
-
-# Interactive mode with voice selection
-./installers/install-mcp-claude-code.sh --interactive
-
-# Non-interactive mode
-./installers/install-mcp-claude-code.sh --non-interactive --voice "Siri Female (Spanish Spain)" --rate 175
-```
-
-**Features:**
-- ✅ **Global Configuration**: Available in ALL Claude Code projects automatically
-- ✅ **11 Environment Variables**: Complete configuration with all recommended settings
-- ✅ **Smart Detection**: Automatically detects Claude Code and optimal paths
-- ✅ **Fallback Support**: Maintains Claude Desktop compatibility
-- ✅ **Interactive Setup**: Choose voice, rate, and options during installation
 
 ## 📊 Performance
 

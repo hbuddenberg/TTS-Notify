@@ -1,5 +1,5 @@
 """
-TTS Notify v2.0.0 - Modular Text-to-Speech notification system
+TTS Notify v3.0.0 - Modular Text-to-Speech notification system
 """
 
 import sys
@@ -24,7 +24,7 @@ for path in paths_to_add:
 # Also add to current working directory for imports
 os.chdir(project_root)
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 __author__ = "TTS Notify Project"
 __description__ = "Modular Text-to-Speech notification system for macOS with CLI, MCP, and REST API interfaces"
 

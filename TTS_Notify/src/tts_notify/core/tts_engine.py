@@ -211,7 +211,7 @@ class MacOSTTSEngine(SubprocessTTSEngine):
 
     async def get_supported_voices(self) -> List[Voice]:
         """Get supported voices by delegating to voice manager"""
-        from core.voice_system import VoiceManager
+        from tts_notify.core.voice_system import VoiceManager
         voice_manager = VoiceManager()
         return await voice_manager.get_all_voices()
 
@@ -464,6 +464,66 @@ class EngineRegistry:
             except Exception as e:
                 info[name] = {"error": str(e)}
         return info
+
+
+async def bootstrap_engines(config=None):
+    """Bootstrap all available TTS engines based on configuration"""
+    from .config_manager import ConfigManager
+
+    if config is None:
+        config_manager = ConfigManager()
+        config = config_manager.get_config()
+
+    # Always register macOS engine (default, guaranteed to work)
+    macos_engine = MacOSTTSEngine()
+    engine_registry.register(macos_engine, is_default=True)
+    logger.info("Registered macOS TTS engine (default)")
+
+    # Conditionally register CoquiTTS if available
+    if (config.TTS_NOTIFY_ENGINE == "coqui" or
+        config.TTS_NOTIFY_COQUI_AUTO_INIT or
+        config.TTS_NOTIFY_AUTO_DOWNLOAD_MODELS):
+        try:
+            # Import here to avoid circular import issues
+            from tts_notify.core.coqui_engine import CoquiTTSEngine
+
+            # Create CoquiTTS engine
+            coqui_engine = CoquiTTSEngine(config.TTS_NOTIFY_COQUI_MODEL)
+
+            # Check if it's available before registering
+            if coqui_engine.is_available():
+                engine_registry.register(coqui_engine)
+
+                # Set as default if explicitly requested
+                if config.TTS_NOTIFY_ENGINE == "coqui":
+                    # Unregister macOS as default first
+                    engine_registry._default_engine = None
+                    engine_registry.register(coqui_engine, is_default=True)
+                    logger.info("Registered CoquiTTS engine as default")
+                else:
+                    logger.info("Registered CoquiTTS engine")
+            else:
+                logger.info("CoquiTTS engine not available, skipping registration")
+                if config.TTS_NOTIFY_ENGINE == "coqui":
+                    logger.warning("CoquiTTS requested but not available. Install with: pip install coqui-tts")
+
+        except ImportError:
+            logger.warning("CoquiTTS dependencies not available. Install with: pip install coqui-tts")
+        except Exception as e:
+            logger.warning(f"Failed to register CoquiTTS engine: {e}")
+
+    # Also try to register CoquiTTS if available (even if not explicitly requested)
+    else:
+        try:
+            from tts_notify.core.coqui_engine import CoquiTTSEngine
+            coqui_engine = CoquiTTSEngine(config.TTS_NOTIFY_COQUI_MODEL)
+            if coqui_engine.is_available():
+                engine_registry.register(coqui_engine)
+                logger.info("Auto-registered available CoquiTTS engine")
+        except ImportError:
+            logger.debug("CoquiTTS not available")
+        except Exception as e:
+            logger.debug(f"CoquiTTS auto-registration failed: {e}")
 
 
 # Global engine registry instance

@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tts-notify"
-version = "2.0.0"
-description = "Modular Text-to-Speech notification system for macOS with CLI, MCP, and REST API interfaces"
+version = "3.0.0"
+description = "Modular Text-to-Speech notification system for macOS with CLI, MCP, REST API, and CoquiTTS AI-powered voices"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
 license = "MIT"
-keywords = ["tts", "text-to-speech", "macos", "voice", "speech", "audio", "cli", "mcp", "api", "notifications", "claude-desktop"]
+keywords = ["tts", "text-to-speech", "macos", "voice", "speech", "audio", "cli", "mcp", "api", "notifications", "claude-desktop", "coqui-tts", "ai-voices", "multi-language"]
 authors = [
     { name = "TTS Notify Project" }
 ]
@@ -29,9 +29,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
@@ -47,9 +44,14 @@ dependencies = [
 
 # Optional dependencies for different installation modes
 [project.optional-dependencies]
-# MCP server mode
+# MCP server mode (legacy)
 mcp = [
     "mcp>=1.0.0",
+]
+
+# FastMCP server mode (NEW in v3.1.0 - recommended)
+fastmcp = [
+    "fastmcp>=2.0.0",
 ]
 
 # REST API mode
@@ -59,8 +61,110 @@ api = [
     "python-multipart>=0.0.6",
 ]
 
+# CoquiTTS AI-powered TTS engine (NEW in v3.0.0)
+coqui = [
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+]
+
+# CoquiTTS with GPU acceleration
+coqui-gpu = [
+    "coqui-tts[gpu]>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+]
+
+# Multi-language support for CoquiTTS
+coqui-langs = [
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+]
+
+# Phase B: Voice Cloning support
+coqui-cloning = [
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "noisereduce>=2.0.0",
+]
+
+# Voice Cloning with GPU support
+coqui-cloning-gpu = [
+    "coqui-tts[gpu]>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "noisereduce>=2.0.0",
+]
+
+# Phase C: Audio Pipeline support
+audio-pipeline = [
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "ffmpeg-python>=0.2.0",
+]
+
+# Audio Pipeline with FFmpeg
+audio-pipeline-ffmpeg = [
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "ffmpeg-python>=0.2.0",
+    "pydub>=0.25.0",
+]
+
 # Development mode
 dev = [
+    "mcp>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "tqdm>=4.65.0",
+]
+
+# Development with CoquiTTS support
+dev-coqui = [
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+    "mcp>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "python-multipart>=0.0.6",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+# Development with full CoquiTTS and Voice Cloning support
+dev-coqui-cloning = [
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
     "mcp>=1.0.0",
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
@@ -80,6 +184,14 @@ all = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "python-multipart>=0.0.6",
+    "coqui-tts>=0.27.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "ffmpeg-python>=0.2.0",
+    "pydub>=0.25.0",
 ]
 
 [project.urls]

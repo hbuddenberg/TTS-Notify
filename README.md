@@ -1,91 +1,180 @@
-# TTS Notify v2.0.0
+# TTS Notify v3.0.0
 
-[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/yourusername/tts-notify)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/hbuddenb/tts-notify)
+[![Release](https://img.shields.io/github/v/release/hbuddenb/tts-notify?include_prereleases&label=latest)](https://github.com/hbuddenb/tts-notify/releases)
+[![Stars](https://img.shields.io/github/stars/hbuddenb/tts-notify)](https://github.com/hbuddenb/tts-notify)
 
-🎯 **Modular Text-to-Speech notification system for macOS with CLI, MCP, and REST API interfaces**
+🎯 **Modular Text-to-Speech notification system with dual-engine architecture: macOS native + CoquiTTS AI voices**
 
-TTS Notify v2.0.0 is a complete rewrite featuring a modular architecture that maintains full compatibility with v1.5.0 while adding powerful new capabilities. It provides three different interfaces (CLI, MCP, REST API) that all use the same core TTS engine.
+TTS Notify v3.0.0 features a complete modular architecture with dual TTS engines: native macOS voices and CoquiTTS with XTTS v2 for AI-powered voice synthesis. Three interfaces (CLI, MCP, REST API) share a unified core.
 
-## ✨ What's New in v2.0.0
+---
 
-### 🏗️ **Complete Modular Architecture**
-- **Core System**: 6 modular components with clean separation of concerns
-- **Multiple Interfaces**: CLI, MCP Server, REST API - all using the same core
-- **Plugin Foundation**: Extensible architecture for future enhancements
+## ✨ What's New in v3.0.0
+
+### 🤖 **CoquiTTS + XTTS v2 Integration**
+- **Voice Cloning**: Clone voices from 6-30 second audio samples
+- **Emotion Presets**: neutral, happy, sad, urgent, calm
+- **17 Languages**: Cross-lingual synthesis (English, Spanish, French, German, Italian, Portuguese, Polish, Turkish, Russian, Dutch, Czech, Arabic, Chinese, Japanese, Hungarian, Korean, Hindi)
+- **CPU Optimized**: Works 100% on CPU, no GPU required
+- **macOS Intel Compatible**: Full support for Intel Macs with optimized PyTorch 2.2.2
+
+### 🏗️ **Modular Architecture**
+- **6 Core Components**: Clean separation of concerns
+- **3 Interfaces**: CLI, MCP Server, REST API - all using the same core
 - **40% Code Reduction**: Eliminated duplication through smart design
 
-### 🎛️ **Intelligent Configuration System**
-- **30+ Environment Variables**: Complete control over all aspects
-- **10+ Predefined Profiles**: Ready-to-use configurations for different scenarios
-- **YAML Configuration Files**: Human-readable configuration management
-- **Runtime Validation**: Automatic configuration validation with helpful error messages
+### 🎛️ **Intelligent Configuration**
+- **60+ Environment Variables**: Complete control
+- **11 Predefined Profiles**: Ready-to-use configurations
+- **Pydantic Validation**: Automatic validation with helpful errors
 
-### 🚀 **Enhanced Performance**
-- **Async Support**: Non-blocking operations throughout the system
-- **Voice Caching**: Intelligent caching with configurable TTL
-- **Concurrent Processing**: Support for multiple simultaneous requests
-- **Resource Optimization**: Efficient memory and CPU usage
-
-### 🛠️ **Developer Experience**
-- **Type Safety**: Full Pydantic model validation
-- **Comprehensive Logging**: Structured logging with JSON support
-- **Modern Tooling**: Black, isort, mypy, pytest integration
-- **Cross-Platform Installers**: UV-based installation for all platforms
+---
 
 ## 🚀 Quick Start
 
+### Prerequisites
+- **Python 3.10 or 3.11** (required for CoquiTTS)
+- **macOS** (for native TTS) or Linux/Windows (CoquiTTS only)
+- **espeak-ng** (for CoquiTTS phonemization): `brew install espeak-ng`
+
 ### Installation
 
-#### 🎯 **Complete Installation (Recommended)**
 ```bash
-git clone https://github.com/yourusername/tts-notify.git
+# Clone the repository
+git clone https://github.com/hbuddenb/tts-notify.git
 cd tts-notify
-./installers/install.sh all
-```
 
-#### 🔧 **Development Mode**
-```bash
-git clone https://github.com/yourusername/tts-notify.git
-cd tts-notify
-./installers/install.sh development
-source venv/bin/activate
+# Complete installation with CoquiTTS support
+cd TTS_Notify
+./installers/install.sh all
 ```
 
 ### Basic Usage
 
-#### **CLI Interface**
 ```bash
-# Basic text-to-speech
+# CLI - macOS native TTS
 tts-notify "Hello world"
 
-# With specific voice and rate
-tts-notify "Hola mundo" --voice monica --rate 200
+# CLI - CoquiTTS AI voices
+tts-notify "Hello" --engine coqui --emotion happy
+
+# CLI - Voice cloning
+tts-notify "Custom voice speaking" --engine coqui --voice-sample my_voice.wav
 
 # List available voices
 tts-notify --list
 
-# Save audio file
-tts-notify "Test message" --save output --format wav
+# MCP Server (for Claude Desktop)
+tts-notify --mode mcp
 
-# System information
-tts-notify --info
+# REST API
+tts-notify --mode api
 ```
 
-#### **MCP Server (Claude Desktop)**
+---
+
+## 🎵 Voice System
+
+### macOS Native Voices
+- **84+ voices** available
+- **Smart Search**: 4-tier matching (exact → prefix → partial → fallback)
+- **Categories**: Español, Enhanced, Premium, Siri, Others
+
+### CoquiTTS AI Voices
+- **Voice Cloning**: Clone any voice from a 6-30 second audio sample
+- **Emotion Presets**: 
+  - `neutral` - Standard speech (speed 1.0, temperature 0.5)
+  - `happy` - Cheerful tone (speed 1.2, temperature 0.7)
+  - `sad` - Melancholic tone (speed 0.8, temperature 0.3)
+  - `urgent` - Fast, alert tone (speed 1.5, temperature 0.6)
+  - `calm` - Relaxed, slow tone (speed 0.9, temperature 0.4)
+- **Cross-lingual**: Speak in any of 17 supported languages
+
+---
+
+## 📦 Installation Modes
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **Complete** | `./installers/install.sh all` | Full installation with CoquiTTS |
+| **Development** | `./installers/install.sh development` | Dev environment with testing tools |
+| **Production** | `./installers/install.sh production` | CLI only, minimal |
+| **MCP** | `./installers/install.sh mcp` | Claude Desktop integration |
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Voice Settings
+TTS_NOTIFY_VOICE=monica          # Default voice
+TTS_NOTIFY_RATE=175              # Speech rate (WPM)
+TTS_NOTIFY_LANGUAGE=es           # Language code
+
+# Engine Selection
+TTS_NOTIFY_ENGINE=macos          # or "coqui"
+
+# CoquiTTS Settings
+TTS_NOTIFY_COQUI_MODEL=tts_models/multilingual/multi-dataset/xtts_v2
+TTS_NOTIFY_COQUI_EMOTION=neutral
+
+# API Server
+TTS_NOTIFY_API_PORT=8000
+TTS_NOTIFY_API_HOST=localhost
+```
+
+### Configuration Profiles
+
+```bash
+# Use predefined profiles
+tts-notify --profile claude-desktop  # Optimized for Claude Desktop
+tts-notify --profile development      # Development with debugging
+tts-notify --profile production       # Production ready
+```
+
+---
+
+## 🖥️ Interfaces
+
+### CLI Interface
+
+```bash
+# Basic usage
+tts-notify "Your message here"
+
+# With options
+tts-notify "Test" --voice monica --rate 200 --engine coqui
+
+# Save to file
+tts-notify "Recording" --save output --format wav
+
+# System info
+tts-notify --info
+tts-notify --test-installation
+```
+
+### MCP Server (Claude Desktop)
+
 ```bash
 # Start MCP server
 tts-notify --mode mcp
 
-# Automatic Claude Desktop configuration
-# Voice search with natural language in Claude:
-"Lee en voz alta: Hola mundo"
-"Lista todas las voces en español"
-"Guarda este texto como archivo: prueba de audio"
+# Auto-configure Claude Desktop
+./installers/install-uv-mcp.sh
 ```
 
-#### **REST API**
+In Claude Desktop:
+- "Lee en voz alta: Hola mundo"
+- "Lista todas las voces en español"
+- "Usa CoquiTTS para decir: Hello in French"
+
+### REST API
+
 ```bash
 # Start API server
 tts-notify --mode api
@@ -94,104 +183,117 @@ tts-notify --mode api
 # Interactive docs at http://localhost:8000/docs
 ```
 
-## 🏗️ Architecture
+API Endpoints:
+- `POST /speak` - Synthesize speech
+- `GET /voices` - List available voices
+- `GET /health` - Health check
 
-```
-TTS_Notify/
-├── src/                     # Source code
-│   ├── main.py              # Main orchestrator
-│   ├── core/                # Core functionality (6 modules)
-│   │   ├── config_manager.py    # Intelligent configuration
-│   │   ├── voice_system.py      # Voice detection & management
-│   │   ├── tts_engine.py        # Abstract TTS engine
-│   │   ├── models.py            # Data models with validation
-│   │   └── exceptions.py        # Custom exception hierarchy
-│   ├── ui/                  # User interfaces
-│   │   ├── cli/            # Command-line interface
-│   │   ├── mcp/            # MCP server for Claude Desktop
-│   │   └── api/            # REST API with FastAPI
-│   ├── utils/               # Utility modules
-│   ├── installer/          # Installer module
-│   └── plugins/            # Plugin system foundation
-├── installers/             # Installation scripts
-├── tests/                  # Test suite
-├── config/                 # Configuration files
-└── docs/                   # Documentation
-```
+---
 
-### Interface Overview
+## 🎤 Voice Cloning
 
-| Interface | Use Case | Entry Point | Key Features |
-|-----------|----------|-------------|-------------|
-| **CLI** | Command-line usage, scripts | `tts-notify` | Voice control, file saving, filtering |
-| **MCP** | Claude Desktop integration | `tts-notify --mode mcp` | 4 MCP tools, flexible voice search |
-| **API** | Web applications, services | `tts-notify --mode api` | REST endpoints, OpenAPI docs, async |
+### Quick Voice Cloning
 
-## ⚙️ Configuration
+Clone any voice from an audio sample for one-time use:
 
-### Environment Variables
 ```bash
-# Voice Settings (Core)
-TTS_NOTIFY_VOICE=monica                    # Default voice
-TTS_NOTIFY_RATE=175                        # Speech rate (WPM)
-TTS_NOTIFY_LANGUAGE=es                     # Language
-TTS_NOTIFY_QUALITY=enhanced                # Voice quality
+# Clone voice from sample (6-30 seconds recommended)
+tts-notify "This is my cloned voice speaking" \
+  --engine coqui \
+  --voice-sample my_voice_sample.wav
 
-# Voice Settings (Advanced)
-TTS_NOTIFY_PITCH=1.0                       # Voice pitch (0.5-2.0)
-TTS_NOTIFY_VOLUME=1.0                      # Voice volume (0.0-1.0)
-
-# Functionality
-TTS_NOTIFY_ENABLED=true                    # Enable TTS
-TTS_NOTIFY_CACHE_ENABLED=true              # Enable voice caching
-TTS_NOTIFY_LOG_LEVEL=INFO                  # Logging level
-
-# Performance & Limits
-TTS_NOTIFY_MAX_TEXT_LENGTH=5000            # Maximum text length
-TTS_NOTIFY_OUTPUT_FORMAT=aiff              # Audio format
-
-# API Server
-TTS_NOTIFY_API_PORT=8000                   # API server port
-TTS_NOTIFY_API_HOST=localhost              # API server host
+# With emotion
+tts-notify "Happy message" \
+  --engine coqui \
+  --voice-sample my_voice.wav \
+  --emotion happy
 ```
 
-**🚀 Auto-Configured Variables:**
-The new MCP installers automatically configure **all 11 environment variables** with optimal defaults for Claude Code integration.
+### Advanced Voice Cloning (Persistent Profiles)
 
-### Configuration Profiles
+Create persistent voice profiles that can be reused:
+
 ```bash
-# Use predefined profiles
-tts-notify --profile claude-desktop  # Optimized for Claude Desktop
-tts-notify --profile development      # Development with debugging
-tts-notify --profile production       # Production ready
+# Create a voice profile from audio sample
+tts-notify --clone-voice karina.flac --voice-name Karina --clone-language es
+
+# Use the cloned voice (no need for original sample)
+tts-notify "Hola mundo" --engine coqui --voice "Karina"
+
+# List cloned voices
+tts-notify --list-cloned-voices
+
+# Delete a cloned voice
+tts-notify --delete-cloned-voice Karina
 ```
 
-## 🎵 Voice System
+### Voice Cloning Features
 
-### 84+ Voice Support
-- **Automatic Detection**: Discovers all system voices at startup
-- **Smart Categorization**: Español, Enhanced, Premium, Siri, Others
-- **Flexible Search**: Exact, partial, case-insensitive, accent-insensitive matching
-- **Performance**: 75% faster voice detection with caching
+| Feature | Description |
+|---------|-------------|
+| **Auto-trimming** | Audio samples >30s are automatically trimmed to optimal length |
+| **Denoising** | Background noise is automatically reduced using noisereduce |
+| **Normalization** | Audio levels are normalized for consistent quality |
+| **Format Support** | WAV, FLAC, MP3, OGG, M4A supported |
+| **Persistent Storage** | Voice profiles saved in `~/.tts-notify/voice-profiles/` |
+| **Multi-language** | Clone voice in one language, use in any of 17 languages |
 
-### Voice Search Examples
+### Voice Cloning Best Practices
+
+1. **Sample Length**: 6-30 seconds of clear speech
+2. **Quality**: Use clean audio without background noise
+3. **Content**: Natural speech works better than reading
+4. **Format**: WAV or FLAC preferred for best quality
+
 ```bash
-# Exact match
-tts-notify "Test" --voice Monica
+# Example: Clone a voice from FLAC file
+tts-notify --clone-voice my_voice.flac --voice-name MyVoice --clone-language en
 
-# Case-insensitive
-tts-notify "Test" --voice monica
-
-# Partial match
-tts-notify "Test" --voice angel  # Finds Angélica
-
-# Quality variants
-tts-notify "Test" --voice "monica enhanced"
+# Use with different languages (cross-lingual synthesis)
+tts-notify "Bonjour le monde" --engine coqui --voice "MyVoice" --language fr
+tts-notify "Hola mundo" --engine coqui --voice "MyVoice" --language es
 ```
+
+---
+
+## 🌐 Multi-Language Support
+
+CoquiTTS supports 17 languages:
+
+| Language | Code | Language | Code |
+|----------|------|----------|------|
+| English | `en` | Spanish | `es` |
+| French | `fr` | German | `de` |
+| Italian | `it` | Portuguese | `pt` |
+| Polish | `pl` | Turkish | `tr` |
+| Russian | `ru` | Dutch | `nl` |
+| Czech | `cs` | Arabic | `ar` |
+| Chinese | `zh-cn` | Japanese | `ja` |
+| Hungarian | `hu` | Korean | `ko` |
+| Hindi | `hi` | | |
+
+```bash
+# Cross-lingual synthesis
+tts-notify "Bonjour le monde" --engine coqui --language fr
+tts-notify "Hola mundo" --engine coqui --language es
+```
+
+---
+
+## 📊 Performance
+
+| Metric | Value |
+|--------|-------|
+| Voice Detection | ~0.5s (75% faster with caching) |
+| CLI Startup | ~0.3s |
+| Memory Usage (CoquiTTS) | <8GB RAM |
+| Inference Latency | <5 seconds |
+| Supported Platforms | macOS (Intel & Apple Silicon), Linux, Windows |
+
+---
 
 ## 🧪 Development
 
-### Setup
 ```bash
 # Install development dependencies
 pip install -e ".[dev]"
@@ -200,33 +302,23 @@ pip install -e ".[dev]"
 pytest
 
 # Code formatting
-black src tests
-isort src tests
+black src tests && isort src tests
 
 # Type checking
 mypy src
 ```
 
-### Testing
-```bash
-# All tests
-pytest
-
-# Specific modules
-pytest tests/test_core.py
-pytest tests/test_api.py
-
-# With coverage
-pytest --cov=src
-```
+---
 
 ## 📖 Documentation
 
-- **[README-v2.md](README-v2.md)** - Complete documentation
-- **[CHANGELOG-v2.md](CHANGELOG-v2.md)** - Version history and changes
-- **[MIGRATION-GUIDE-v2.md](MIGRATION-GUIDE-v2.md)** - Migration from v1.5.0
-- **[CLAUDE.md](CLAUDE.md)** - Development guide for Claude Code
+- **[README.md](README.md)** - English documentation (this file)
+- **[README.es.md](README.es.md)** - Spanish documentation
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+- **[TTS_Notify/README.md](TTS_Notify/README.md)** - Detailed technical docs
 - **[configuracion-global-mcp-tts-notify.md](configuracion-global-mcp-tts-notify.md)** - Global MCP configuration guide
+
+---
 
 ## 🔧 Installation Scripts
 
@@ -245,8 +337,8 @@ installers/install.ps1 -Mode [mode]
 ./installers/install-mcp-claude-code.sh # Claude Code specialized installer
 ```
 
-### 🚀 **NEW: Claude Code Global Installation**
-The installer now supports **automatic global configuration** for Claude Code:
+### 🚀 Claude Code Global Installation
+The installer supports **automatic global configuration** for Claude Code:
 
 ```bash
 # Automatic detection and configuration
@@ -269,38 +361,33 @@ The installer now supports **automatic global configuration** for Claude Code:
 - ✅ **Fallback Support**: Maintains Claude Desktop compatibility
 - ✅ **Interactive Setup**: Choose voice, rate, and options during installation
 
-## 📊 Performance
-
-| Metric | v1.5.0 | v2.0.0 | Improvement |
-|--------|--------|--------|-------------|
-| Voice Detection | ~2s | ~0.5s | 75% faster |
-| CLI Startup | ~1s | ~0.3s | 70% faster |
-| Memory Usage | ~50MB | ~30MB | 40% reduction |
-| Code Size | ~5000 lines | ~3000 lines | 40% reduction |
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Install development dependencies: `./installers/install.sh development`
+3. Install dev dependencies: `./installers/install.sh development`
 4. Make changes with tests
 5. Run tests: `pytest`
-6. Format code: `black src tests && isort src tests`
-7. Commit changes: `git commit -m "Add amazing feature"`
-8. Push branch: `git push origin feature/amazing-feature`
-9. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- **Homepage**: https://github.com/yourusername/tts-notify
-- **Documentation**: https://github.com/yourusername/tts-notify#readme
-- **Issues**: https://github.com/yourusername/tts-notify/issues
-- **Changelog**: https://github.com/yourusername/tts-notify/blob/main/CHANGELOG.md
+6. Commit: `git commit -m "Add amazing feature"`
+7. Push: `git push origin feature/amazing-feature`
+8. Open Pull Request
 
 ---
 
-**TTS Notify v2.0.0** - 🎯 Modular, Powerful, and Ready for Production!
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [CoquiTTS](https://github.com/coqui-ai/TTS) - AI-powered TTS engine
+- [XTTS v2](https://huggingface.co/coqui/XTTS-v2) - Multi-language voice cloning
+- [macOS `say` command](https://ss64.com/mac/say.html) - Native TTS engine
+
+---
+
+**TTS Notify v3.0.0** - 🎯 Dual-Engine TTS for macOS + AI Voices

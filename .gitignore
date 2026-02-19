@@ -118,3 +118,25 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ============================================================================
+# TTS-NOTIFY v3.0 - DEVELOPMENT EXCLUSIONS
+# ============================================================================
+
+# AI Tools & Dev Folders (not for production)
+.claude/
+.github/
+.sisyphus/
+.ruff_cache/
+
+# Development Files
+AGENTS.md
+CLAUDE.md
+MCP_CONFIG_FORMATS.md
+implement_v3.md
+
+# Virtual Environments (all variants)
+venv*/
+test_venv/
+venv312/
+venv313/

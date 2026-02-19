@@ -11,6 +11,7 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Optional
+import os
 
 # Core imports will be done lazily to avoid import issues
 
@@ -37,6 +38,7 @@ class TTSNotifyOrchestrator:
     def config_manager(self):
         if self._config_manager is None:
             from .core.config_manager import config_manager
+
             self._config_manager = config_manager
         return self._config_manager
 
@@ -44,6 +46,7 @@ class TTSNotifyOrchestrator:
     def system_detector(self):
         if self._system_detector is None:
             from .utils.system_detector import SystemDetector
+
             self._system_detector = SystemDetector()
         return self._system_detector
 
@@ -61,13 +64,11 @@ class TTSNotifyOrchestrator:
         """Setup logging based on configuration"""
         from .utils.logger import setup_logging, get_logger
 
-        setup_logging(
-            level=getattr(self.config, 'TTS_NOTIFY_LOG_LEVEL', 'INFO')
-        )
+        setup_logging(level=getattr(self.config, "TTS_NOTIFY_LOG_LEVEL", "INFO"))
         self._logger = get_logger(__name__)
 
         if self._logger:
-            self._logger.info("TTS Notify Orchestrator v2.0.0 initialized")
+            self._logger.info("TTS Notify Orchestrator v3.0.0 initialized")
 
     def detect_execution_mode(self) -> str:
         """Intelligently detect the execution mode"""
@@ -88,17 +89,37 @@ class TTSNotifyOrchestrator:
             return "mcp"
 
         # Check for API server context
-        if "API_SERVER" in os.environ or "FASTAPI" in os.environ or "TTS_NOTIFY_API_PORT" in os.environ:
+        if (
+            "API_SERVER" in os.environ
+            or "FASTAPI" in os.environ
+            or "TTS_NOTIFY_API_PORT" in os.environ
+        ):
             return "api"
 
         # Check command line arguments
         if len(sys.argv) > 1:
             first_arg = sys.argv[1].lower()
-            if first_arg in ["cli", "mcp", "api", "server", "--help", "-h", "--version"]:
+            if first_arg in [
+                "cli",
+                "mcp",
+                "api",
+                "server",
+                "--help",
+                "-h",
+                "--version",
+            ]:
                 return "cli"
 
             # Check for CLI-specific flags
-            cli_flags = ["--list", "--voice", "--rate", "--save", "--compact", "--gen", "--lang"]
+            cli_flags = [
+                "--list",
+                "--voice",
+                "--rate",
+                "--save",
+                "--compact",
+                "--gen",
+                "--lang",
+            ]
             if any(flag in sys.argv for flag in cli_flags):
                 return "cli"
 
@@ -129,6 +150,7 @@ class TTSNotifyOrchestrator:
         if mode == "cli":
             if not self.cli:
                 from .ui.cli.main import TTSNotifyCLI
+
                 self.cli = TTSNotifyCLI()
             return self.cli
         elif mode == "mcp":
@@ -138,6 +160,7 @@ class TTSNotifyOrchestrator:
         elif mode == "api" or mode == "server":
             if not self.api_server:
                 from .ui.api.server import TTSNotifyAPIServer
+
                 self.api_server = TTSNotifyAPIServer()
             return self.api_server
         else:
@@ -166,45 +189,37 @@ Para más información sobre cada modo:
   tts-notify --mode cli --help          - Ayuda del modo CLI
   tts-notify --mode mcp --help          - Ayuda del modo MCP
   tts-notify --mode api --help          - Ayuda del modo API
-            """
+            """,
         )
 
         # Mode selection
         parser.add_argument(
-            "--mode", "-m",
+            "--mode",
+            "-m",
             choices=["cli", "mcp", "api", "server"],
-            help="Modo de ejecución (default: detección automática)"
+            help="Modo de ejecución (default: detección automática)",
         )
 
         # Configuration
         parser.add_argument(
-            "--profile",
-            help="Usar perfil de configuración predefinido"
+            "--profile", help="Usar perfil de configuración predefinido"
         )
         parser.add_argument(
-            "--verbose",
-            action="store_true",
-            help="Mostrar información detallada"
+            "--verbose", action="store_true", help="Mostrar información detallada"
         )
         parser.add_argument(
-            "--debug",
-            action="store_true",
-            help="Mostrar información de depuración"
+            "--debug", action="store_true", help="Mostrar información de depuración"
         )
 
         # System information
         parser.add_argument(
             "--info",
             action="store_true",
-            help="Mostrar información del sistema y configuración"
+            help="Mostrar información del sistema y configuración",
         )
 
         # Version
-        parser.add_argument(
-            "--version",
-            action="version",
-            version="%(prog)s 2.0.0"
-        )
+        parser.add_argument("--version", action="version", version="%(prog)s 3.0.0")
 
         return parser
 
@@ -216,6 +231,7 @@ Para más información sobre cada modo:
 
             # Voice information
             from core.voice_system import VoiceManager
+
             voice_manager = VoiceManager()
             voices = await voice_manager.get_all_voices()
 
@@ -223,7 +239,7 @@ Para más información sobre cada modo:
             mcp_vars = self.config_manager.get_mcp_environment_variables()
             validation_issues = self.config_manager.validate_system()
 
-            print("🔧 TTS NOTIFY v2.0.0 - INFORMACIÓN DEL SISTEMA")
+            print("🔧 TTS NOTIFY v3.0.0 - INFORMACIÓN DEL SISTEMA")
             print("=" * 60)
 
             print("\n📋 INFORMACIÓN DEL SISTEMA:")
@@ -235,22 +251,38 @@ Para más información sobre cada modo:
             print(f"\n🎵 VOCES DISPONIBLES: {len(voices)}")
             if voices:
                 # Categorize voices
-                espanol = [v for v in voices if 'espanol' in v.name.lower() or 'español' in v.name.lower()]
-                enhanced = [v for v in voices if 'enhanced' in v.name.lower() or 'premium' in v.name.lower()]
-                siri = [v for v in voices if 'siri' in v.name.lower()]
+                espanol = [
+                    v
+                    for v in voices
+                    if "espanol" in v.name.lower() or "español" in v.name.lower()
+                ]
+                enhanced = [
+                    v
+                    for v in voices
+                    if "enhanced" in v.name.lower() or "premium" in v.name.lower()
+                ]
+                siri = [v for v in voices if "siri" in v.name.lower()]
 
                 print(f"  Español: {len(espanol)}")
                 print(f"  Enhanced: {len(enhanced)}")
                 print(f"  Siri: {len(siri)}")
-                print(f"  Otras: {len(voices) - len(espanol) - len(enhanced) - len(siri)}")
+                print(
+                    f"  Otras: {len(voices) - len(espanol) - len(enhanced) - len(siri)}"
+                )
 
             print(f"\n⚙️  CONFIGURACIÓN ACTUAL:")
             print(f"  Perfil: {getattr(self.config, 'TTS_NOTIFY_PROFILE', 'default')}")
             print(f"  Voz: {getattr(self.config, 'TTS_NOTIFY_VOICE', 'monica')}")
             print(f"  Velocidad: {getattr(self.config, 'TTS_NOTIFY_RATE', 175)} WPM")
-            print(f"  TTS Habilitado: {getattr(self.config, 'TTS_NOTIFY_ENABLED', True)}")
-            print(f"  Caché Habilitado: {getattr(self.config, 'TTS_NOTIFY_CACHE_ENABLED', True)}")
-            print(f"  Nivel de Log: {getattr(self.config, 'TTS_NOTIFY_LOG_LEVEL', 'INFO')}")
+            print(
+                f"  TTS Habilitado: {getattr(self.config, 'TTS_NOTIFY_ENABLED', True)}"
+            )
+            print(
+                f"  Caché Habilitado: {getattr(self.config, 'TTS_NOTIFY_CACHE_ENABLED', True)}"
+            )
+            print(
+                f"  Nivel de Log: {getattr(self.config, 'TTS_NOTIFY_LOG_LEVEL', 'INFO')}"
+            )
 
             print(f"\n✅ VALIDACIÓN DEL SISTEMA:")
             if validation_issues:
@@ -278,17 +310,29 @@ Para más información sobre cada modo:
         try:
             # Check for help with specific mode before parsing
             if "--help" in sys.argv or "-h" in sys.argv:
-                help_index = next((i for i, arg in enumerate(sys.argv) if arg in ["--help", "-h"]), -1)
-                mode_index = next((i for i, arg in enumerate(sys.argv) if arg == "--mode"), -1)
+                help_index = next(
+                    (i for i, arg in enumerate(sys.argv) if arg in ["--help", "-h"]), -1
+                )
+                mode_index = next(
+                    (i for i, arg in enumerate(sys.argv) if arg == "--mode"), -1
+                )
 
                 if mode_index != -1 and mode_index < help_index:
                     # Help is requested after --mode, delegate to specific mode
-                    mode = sys.argv[mode_index + 1] if mode_index + 1 < len(sys.argv) else None
+                    mode = (
+                        sys.argv[mode_index + 1]
+                        if mode_index + 1 < len(sys.argv)
+                        else None
+                    )
                     if mode == "cli":
                         from .ui.cli.main import main as cli_main
+
                         # Modify sys.argv to remove --mode mode and keep --help
-                        new_argv = ["tts-notify"] + [arg for i, arg in enumerate(sys.argv)
-                                  if not (i >= mode_index and i <= mode_index + 1)]
+                        new_argv = ["tts-notify"] + [
+                            arg
+                            for i, arg in enumerate(sys.argv)
+                            if not (i >= mode_index and i <= mode_index + 1)
+                        ]
                         original_argv = sys.argv
                         sys.argv = new_argv
                         try:
@@ -311,16 +355,22 @@ Para más información sobre cada modo:
                                 "mcpServers": {
                                     "tts-notify": {
                                         "command": python_exe,
-                                        "args": ["-m", "tts_notify", "--mode", "mcp"]
+                                        "args": ["-m", "tts_notify", "--mode", "mcp"],
                                     }
                                 }
                             }
 
-                            print("🤖 TTS Notify - Configuración MCP para Claude Desktop")
+                            print(
+                                "🤖 TTS Notify - Configuración MCP para Claude Desktop"
+                            )
                             print("=" * 60)
                             print()
-                            print("📍 Copie y pegue este JSON en su archivo de configuración:")
-                            print("   ~/Library/Application Support/Claude/claude_desktop_config.json")
+                            print(
+                                "📍 Copie y pegue este JSON en su archivo de configuración:"
+                            )
+                            print(
+                                "   ~/Library/Application Support/Claude/claude_desktop_config.json"
+                            )
                             print()
                             print("📝 Configuración JSON:")
                             print(json.dumps(mcp_config, indent=2))
@@ -330,8 +380,12 @@ Para más información sobre cada modo:
                             print()
                             print("💡 Notas:")
                             print("   • Reinicie Claude Desktop después de configurar")
-                            print("   • El servidor usará TTS nativo de macOS (say command)")
-                            print("   • Herramientas disponibles: speak_text, list_voices, save_audio")
+                            print(
+                                "   • El servidor usará TTS nativo de macOS (say command)"
+                            )
+                            print(
+                                "   • Herramientas disponibles: speak_text, list_voices, save_audio"
+                            )
                             return
                         else:
                             print(f"🔧 Help para modo {mode.upper()}")
@@ -367,17 +421,20 @@ Para más información sobre cada modo:
 
             # Handle different modes
             if mode == "mcp":
-                # Direct MCP server - use enhanced server for maximum compatibility
-                from .ui.mcp.enhanced_server import main as mcp_main
-                mcp_main()
+                from .ui.mcp.fastmcp_server import mcp
+
+                mcp.run()
                 return
 
             if mode == "cli":
                 # Delegate to CLI interface
                 from .ui.cli.main import main as cli_main
+
                 if args:
                     # Filter orchestrator-specific args
-                    filtered_args = [arg for arg in sys.argv if arg not in ["--mode", mode]]
+                    filtered_args = [
+                        arg for arg in sys.argv if arg not in ["--mode", mode]
+                    ]
                     if args.profile:
                         filtered_args.extend(["--profile", args.profile])
                     if args.verbose:
@@ -407,7 +464,9 @@ Para más información sobre cada modo:
                 cmd = [sys.executable, "-m", "tts_notify", "--mode", "mcp"]
 
                 if self.logger:
-                    self.logger.info(f"Starting MCP server with command: {' '.join(cmd)}")
+                    self.logger.info(
+                        f"Starting MCP server with command: {' '.join(cmd)}"
+                    )
 
                 # Start the MCP server as a subprocess
                 process = subprocess.Popen(
@@ -415,19 +474,20 @@ Para más información sobre cada modo:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    env=os.environ.copy()
+                    env=os.environ.copy(),
                 )
 
                 # Wait a moment to see if it starts successfully
                 try:
                     import asyncio
+
                     await asyncio.wait_for(
                         asyncio.create_subprocess_exec(
                             *cmd,
                             stdout=asyncio.subprocess.DEVNULL,
-                            stderr=asyncio.subprocess.DEVNULL
+                            stderr=asyncio.subprocess.DEVNULL,
                         ),
-                        timeout=3.0
+                        timeout=3.0,
                     )
                     print("✅ MCP server started successfully")
                     if self.logger:
@@ -453,6 +513,7 @@ Para más información sobre cada modo:
             elif mode == "api" or mode == "server":
                 # Delegate to API server
                 from .ui.api.server import main as api_main
+
                 await api_main()
 
             else:
@@ -469,13 +530,66 @@ Para más información sobre cada modo:
             sys.exit(1)
 
 
+def ensure_venv_execution():
+    """
+    Automatically switch to venv312 if available and not currently active.
+    This ensures CoquiTTS dependencies are available even if run from global context.
+    """
+    try:
+        # Check if we've already switched to avoid infinite loops
+        if os.environ.get("TTS_NOTIFY_RELAUNCHED"):
+            return
+
+        # Only attempt this if we are in an editable install or source checkout
+        current_file = Path(__file__).resolve()
+        # src/tts_notify/main.py -> src/tts_notify -> src -> TTS_Notify (project root)
+        if len(current_file.parents) < 3:
+            return
+
+        project_root = current_file.parents[2]
+        venv_path = project_root / "venv312"
+
+        # Check if venv312 exists and has python
+        venv_python = venv_path / "bin" / "python"
+        if not venv_python.exists():
+            return
+
+        # Check if we are already running from this venv
+        current_exe = Path(sys.executable).resolve()
+        venv_python_resolved = venv_python.resolve()
+
+        if current_exe == venv_python_resolved:
+            return
+
+        # Check if sys.prefix matches (another way to check)
+        if str(venv_path.resolve()) in sys.prefix:
+            return
+
+        # If we are here, we need to switch
+        # We use -m tts_notify to ensure we run the module properly
+        args = [str(venv_python), "-m", "tts_notify"] + sys.argv[1:]
+
+        # Set flag
+        os.environ["TTS_NOTIFY_RELAUNCHED"] = "1"
+
+        # Replace current process
+        os.execv(str(venv_python), args)
+
+    except Exception:
+        # If anything fails, just proceed with current environment
+        pass
+
+
 async def main():
     """Main entry point for TTS Notify v2"""
+    # Ensure we are in the correct venv
+    ensure_venv_execution()
+
     # Check for special modes before creating orchestrator
     if len(sys.argv) > 2 and sys.argv[1] == "--mode" and sys.argv[2] == "mcp":
-        # Direct MCP mode - always use enhanced server for maximum compatibility
-        from .ui.mcp.enhanced_server import main as mcp_main
-        mcp_main()
+        from .ui.mcp.fastmcp_server import mcp
+
+        mcp.run()
         return
 
     orchestrator = TTSNotifyOrchestrator()
@@ -485,11 +599,14 @@ async def main():
 def sync_main():
     """Synchronous main entry point for CLI scripts"""
     try:
+        # Ensure we are in the correct venv
+        ensure_venv_execution()
+
         # Check for special modes before creating orchestrator
         if len(sys.argv) > 2 and sys.argv[1] == "--mode" and sys.argv[2] == "mcp":
-            # Direct MCP mode - always use enhanced server for maximum compatibility
-            from .ui.mcp.enhanced_server import main as mcp_main
-            mcp_main()
+            from .ui.mcp.fastmcp_server import mcp
+
+            mcp.run()
             return
 
         # Create orchestrator and run with asyncio
@@ -502,6 +619,7 @@ def sync_main():
         # Fallback to simple CLI if orchestrator fails
         try:
             from .ui.cli.main import sync_main as cli_sync_main
+
             cli_sync_main()
         except ImportError:
             print("TTS Notify v2.0.0 - Error crítico de importación")
