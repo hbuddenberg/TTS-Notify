@@ -192,7 +192,7 @@ run_installer() {
             pip install "TTS==0.22.0" --no-deps || print_warning "TTS installation had issues"
             
             print_info "Installing TTS dependencies..."
-            pip install --prefer-binary coqpit coqpit-config "transformers>=4.33.0" \
+            pip install --prefer-binary coqpit coqpit-config "transformers>=4.33.0,<4.38" \
                 "pandas<2.0,>=1.4" "trainer>=0.0.32" aiohttp anyascii einops flask \
                 inflect jieba nltk num2words pypinyin pysbd "spacy[ja]>=3" umap-learn unidecode \
                 librosa soundfile scipy noisereduce || true
