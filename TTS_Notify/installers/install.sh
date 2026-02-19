@@ -110,6 +110,24 @@ check_macos_tts() {
     fi
 }
 
+# Function to check espeak-ng
+check_espeak() {
+    if command -v espeak-ng &> /dev/null; then
+        print_status "espeak-ng OK"
+        return 0
+    else
+        print_warning "espeak-ng not found (required for CoquiTTS phonemization)"
+        print_info "Installing espeak-ng via Homebrew..."
+        if command -v brew &> /dev/null; then
+            brew install espeak-ng
+            print_status "espeak-ng installed"
+        else
+            print_warning "Homebrew not found - please install espeak-ng manually: brew install espeak-ng"
+        fi
+        return 0
+    fi
+}
+
 # Function to run installer
 run_installer() {
     local mode="$1"
@@ -121,36 +139,37 @@ run_installer() {
         "all"|"coqui"|"complete")
             print_info "Installing TTS Notify v3.0.0 with CoquiTTS support..."
 
-            RECREATE_VENV=false
+
+            RECREATE_VENV=true
             if [ -d "venv312" ]; then
-                if ! ./venv312/bin/python -c "import sys" &>/dev/null; then
-                    print_info "Existing venv312 is broken, recreating..."
+                VENV_PYTHON_VERSION=$(./venv312/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "broken")
+                if [[ "$VENV_PYTHON_VERSION" == "3.10" ]]; then
+                    print_status "Existing venv312 has Python $VENV_PYTHON_VERSION (compatible with CoquiTTS)"
+                    RECREATE_VENV=false
+                else
+                    print_warning "Existing venv312 has Python $VENV_PYTHON_VERSION (incompatible with CoquiTTS, needs 3.10)"
                     rm -rf venv312
-                    RECREATE_VENV=true
                 fi
-            else
-                RECREATE_VENV=true
             fi
 
             if [ "$RECREATE_VENV" = "true" ]; then
-                # Find any Python 3.10+ for CoquiTTS
-                PYTHON_CMD=""
-                for py in python3.14 python3.13 python3.12 python3.11 python3.10 python3; do
-                    if command -v $py &> /dev/null; then
-                        if $py -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
-                            PYTHON_CMD=$py
-                            break
-                        fi
-                    fi
-                done
+                print_info "Creating virtual environment with Python 3.10 (CoquiTTS requirement)..."
+
+                # Find Python 3.10 path from UV
+                PYTHON_310_PATH=$(uv python list 2>/dev/null | grep "cpython-3.10" | grep -v "download available" | head -1 | awk '{print $2}')
                 
-                if [ -z "$PYTHON_CMD" ]; then
-                    print_error "Python 3.10+ required for CoquiTTS"
+                if [ -n "$PYTHON_310_PATH" ] && [ -x "$PYTHON_310_PATH" ]; then
+                    print_info "Using UV Python 3.10: $PYTHON_310_PATH"
+                    uv venv venv312 --python "$PYTHON_310_PATH"
+                elif command -v uv &> /dev/null; then
+                    # Fallback: let UV find Python 3.10
+                    uv venv venv312 --python 3.10
+                elif command -v python3.10 &> /dev/null; then
+                    python3.10 -m venv venv312
+                else
+                    print_error "Python 3.10 required for CoquiTTS (supports Python 3.9-3.11)"
                     return 1
                 fi
-                
-                print_info "Using Python: $($PYTHON_CMD --version)"
-                $PYTHON_CMD -m venv venv312
             fi
 
             # Activate virtual environment and install
@@ -166,13 +185,23 @@ run_installer() {
                 pip install -e .
             fi
 
-            # Install CoquiTTS using our new installation system
-            print_info "Installing CoquiTTS and dependencies..."
-            if ./venv312/bin/tts-notify --install-all; then
-                print_status "CoquiTTS installation completed"
-            else
-                print_warning "CoquiTTS installation encountered issues, but basic functionality is available"
-            fi
+            print_info "Installing CoquiTTS with compatible versions (TTS 0.22.0 + PyTorch 2.2.2)..."
+            
+            pip install "numpy<2" "torch==2.2.2" "torchaudio==2.2.2" || true
+            pip install --prefer-binary "llvmlite<0.46" "numba>=0.60,<0.64" || true
+            pip install "TTS==0.22.0" --no-deps || print_warning "TTS installation had issues"
+            
+            print_info "Installing TTS dependencies..."
+            pip install --prefer-binary coqpit coqpit-config "transformers>=4.33.0" \
+                "pandas<2.0,>=1.4" "trainer>=0.0.32" aiohttp anyascii einops flask \
+                inflect jieba nltk num2words pypinyin pysbd "spacy[ja]>=3" umap-learn unidecode \
+                librosa soundfile scipy noisereduce || true
+            
+            print_info "Installing language support dependencies..."
+            pip install bangla bnnumerizer bnunicodenormalizer cython encodec g2pkk \
+                gruut hangul_romanize jamo || true
+            
+            print_status "CoquiTTS installation completed"
 
             # Create global symlink
             print_info "Creating global symlink..."
@@ -282,6 +311,10 @@ main() {
 
     if ! check_macos_tts; then
         exit 1
+    fi
+
+    if ! check_espeak; then
+        print_warning "espeak-ng not available - some TTS features may be limited"
     fi
 
     if ! check_uv; then

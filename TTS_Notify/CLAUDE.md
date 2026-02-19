@@ -4,163 +4,214 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TTS Notify v2.0.0 is a modular Text-to-Speech notification system for macOS with three interfaces: CLI, MCP (Model Context Protocol) for Claude Desktop, and REST API. The architecture underwent a complete rewrite from v1.5.0, transitioning from monolithic to modular design while maintaining 100% backward compatibility.
+TTS Notify is a modular Text-to-Speech notification system that operates in three modes:
+1. **MCP Server** - Integrates with Claude Desktop/Claude Code as an MCP server
+2. **CLI Tool** - Standalone command-line tool (installed globally or via uvx)
+3. **REST API** - Web API interface for applications and services
+
+**Current Version**: v3.0.0 (complete CoquiTTS integration - **80% functional**)  
+**Previous Version**: v2.0.0 (modular rewrite with 3 interfaces - 100% functional)
+
+The project implements a **dual-engine architecture** with macOS native TTS and AI-powered CoquiTTS engine, maintaining 100% backward compatibility while adding voice cloning, multi-language support, and advanced audio processing.
 
 ## Key Architecture Concepts
 
-### Main Orchestrator Pattern
-The `TTSNotifyOrchestrator` in `src/main.py` serves as the central delegation hub. It automatically detects execution mode (CLI/MCP/API) based on environment variables and arguments, then creates and manages the appropriate interface instance. All entry points flow through this orchestrator.
+### Dual-Engine System (v3.0.0 Breakthrough)
+The `TTSEngineRegistry` in `src/core/tts_engine.py` manages runtime engine selection:
+- **macOS Engine**: Native `say` command for guaranteed compatibility
+- **CoquiTTS Engine**: AI-powered TTS with 17 languages and voice cloning
+- **Intelligent Switching**: Automatic engine selection based on configuration and availability
+
+### Optional Dependency System
+```toml
+# Core functionality (always available)
+dependencies = ["pydantic>=2.0.0", "pyyaml>=6.0"]
+
+# Optional extras for progressive enhancement
+coqui = ["coqui-tts>=0.27.0", "torchaudio>=2.0.0"]
+coqui-gpu = ["coqui-tts[gpu]>=0.27.0"]
+coqui-cloning = ["librosa>=0.10.0", "scipy>=1.10.0", "numpy>=1.24.0"]
+audio-pipeline = ["ffmpeg-python>=0.2.0", "pydub>=0.25.0"]
+```
+
+### Phase-Based Implementation (Complete)
+**Phase A**: Multi-Language CoquiTTS Engine ✅
+- 17 languages: en, es, fr, de, it, pt, nl, pl, ru, zh, ja, ko, cs, ar, tr, hu, fi
+- Intelligent model management with auto-download, caching, and fallback
+- Language detection and forced language options
+
+**Phase B**: Voice Cloning System ✅
+- 4 quality levels: low, medium, high, ultra
+- Multi-language voice cloning with optimization scoring
+- Voice profile management with persistent storage
+
+**Phase C**: Advanced Audio Pipeline ✅
+- 8-stage processing: language optimization, noise reduction, format conversion
+- 6 format support: WAV, AIFF, MP3, OGG, FLAC, M4A
+- Real-time streaming with low-latency processing
 
 ### Modular Core System
 The core functionality is split across `src/core/`:
-- **config_manager.py**: Pydantic-based configuration with 30+ environment variables and 10+ predefined profiles
-- **voice_system.py**: Dynamic voice detection from macOS `say -v ?` command with 84+ voice support and caching
-- **tts_engine.py**: Abstract TTS engine with concrete macOS implementation using async subprocess execution
-- **models.py**: Complete type system with Pydantic models for voices, requests, and responses
+- **config_manager.py**: 60+ environment variables with optional CoquiTTS extensions
+- **coqui_engine.py**: Complete CoquiTTS implementation with voice cloning
+- **audio_pipeline.py**: Advanced audio processing with language optimization
+- **voice_system.py**: Enhanced macOS voice detection with caching (maintained)
+- **tts_engine.py**: Abstract engine with dual-engine registry
+- **models.py**: Extended Pydantic models with voice cloning support
+- **installer.py**: Automated CoquiTTS installation and validation
 
-### Interface Layer
-All user interfaces (`src/ui/`) use the same core backend:
-- **cli/**: Command-line interface maintaining v1.5.0 feature parity
-- **mcp/**: FastMCP server for Claude Desktop integration with 4 tools
-- **api/**: FastAPI-based REST service with OpenAPI documentation
+### Interface Layer (Feature Parity)
+All user interfaces (`src/ui/`) use the same enhanced core:
+- **cli/**: Extended CLI with v3.0.0 flags and voice cloning commands
+- **mcp/**: Enhanced MCP server with 6 tools for voice and model management
+- **api/**: REST API with extended endpoints for CoquiTTS features
 
 ### Configuration Hierarchy
-Configuration follows strict precedence: Environment variables → YAML files → Pydantic defaults → Profile definitions. Key profiles include `claude-desktop`, `api-server`, `development`, and `production`.
+Configuration follows strict precedence with v3.0.0 extensions:
+- Environment variables → YAML files → Pydantic defaults → Profile definitions
+- **Engine Selection**: `TTS_NOTIFY_ENGINE=macos|coqui` (auto-detect if not set)
+- **Backward Compatibility**: All v2.0.0 variables remain functional
 
 ## Development Commands
 
 ### Installation and Setup
 ```bash
-# Complete installation (recommended)
+# Complete v3.0.0 installation (recommended)
 ./installers/install.sh all
 
-# Development mode with virtual environment
-./installers/install.sh development
-source venv/bin/activate
+# Core functionality (macOS native always available)
+pip install ".[dev]"                    # v2.0.0 development
 
-# Alternative: UV-based installation
-uv pip install -e ".[dev]"
+# CoquiTTS installation (required for v3.0.0 features)
+./installers/install.sh coqui              # Auto-installation with validation
+tts-notify --install-coqui              # Installation interactiva
+
+# Check installation status
+tts-notify --installation-status          # Muestra estado actual
 ```
 
-### Testing
+### CLI Commands (Current State)
+
+#### Basic Commands (100% Working - macOS Native)
 ```bash
-# Run all tests
-pytest
-
-# Run specific test modules
-pytest tests/test_core.py
-pytest tests/test_api.py
-pytest tests/test_cli.py
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run tests by markers
-pytest -m unit          # Unit tests only
-pytest -m integration   # Integration tests only
-pytest -m "not slow"    # Skip slow tests
+tts-notify "Hello world"                    # Basic TTS - macOS native
+tts-notify --list                             # List voices - 84 voices detected
+tts-notify --list --compact                   # Compact voice list
+tts-notify --list --gen female                  # Filter by gender
+tts-notify --voice "Monica"                   # Voice selection - flexible matching
+tts-notify --save output.txt                    # Save audio file
+tts-notify --rate 200                          # Speech rate control
 ```
 
-### Code Quality
+#### v3.0.0 Commands (Architecture Complete - Require CoquiTTS Installation)
 ```bash
-# Format code
-black src tests
+# Engine Selection
+tts-notify --engine {macos,coqui} "Texto"     # Switch between engines
+tts-notify --engine coqui --list-languages       # Show 17 available languages
+tts-notify --engine coqui --download-language es  # Download Spanish models
+tts-notify --engine coqui --language es "Texto"  # Force Spanish language
 
-# Sort imports
-isort src tests
+# XTTS v2 Emotion Support (FASE 3 - NEW)
+tts-notify "Great news!" --xtts --emotion happy
+tts-notify "Urgent alert" --xtts --emotion urgent
+tts-notify "Calm message" --xtts --emotion calm --temperature 0.3
+tts-notify "Sad story" --engine coqui --emotion sad --save output.wav
 
-# Type checking
-mypy src
+# Voice Cloning (Phase B)
+tts-notify --clone-voice sample.wav --clone-language es --clone-quality ultra
+tts-notify --engine coqui --voice "ClonedVoice" "Test"
+tts-notify --list-cloned                        # List cloned voices
 
-# Linting
-flake8 src
+# Audio Processing (Phase C)
+tts-notify --process-audio input.wav --output-format mp3
+tts-notify --process-audio input.wav --output-format flac --audio-quality high
+tts-notify --pipeline-status                     # Check audio pipeline status
 ```
 
-### Running the Application
+### FastMCP Server (v3.1.0 - NEW)
+
+TTS Notify now uses FastMCP for improved Claude Desktop integration:
+
 ```bash
-# Main orchestrator (auto-detects mode)
-python src/main.py "Hello world"
+# Start FastMCP server (default)
+tts-notify --mode mcp
 
-# Force specific mode
-python src/main.py --mode cli --list
-python src/main.py --mode mcp
-python src/main.py --mode api
+# FastMCP provides 8 tools:
+# - speak_text: Synthesize speech
+# - list_voices: List available voices
+# - save_audio: Save audio to file
+# - get_config: Get current configuration
+# - xtts_synthesize: XTTS v2 synthesis with emotion support
+# - clone_voice: Clone voice from audio sample
+# - list_cloned_voices: List cloned voices
+# - get_xtts_status: Get XTTS engine status
 
-# Direct interface execution
-python -m ui.cli.main "Test"
-python -m ui.mcp.server
-python -m ui.api.server
+# FastMCP Resources:
+# - voices://list - Voice list resource
+# - config://current - Current configuration resource
 ```
 
-## Development Workflow
+### MCP Tools Reference (FastMCP)
 
-### Adding New Features
-1. Core functionality goes in `src/core/`
-2. New interfaces follow the pattern in `src/ui/`
-3. Configuration variables in `src/core/config_manager.py`
-4. Add corresponding tests in `tests/`
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `speak_text` | Speak text aloud | text, voice, rate, pitch, volume, engine, language |
+| `list_voices` | List available voices | engine, language, gender |
+| `save_audio` | Save audio to file | text, filename, voice, format, engine |
+| `get_config` | Get current config | none |
+| `xtts_synthesize` | XTTS v2 synthesis | text, language, emotion, temperature |
+| `clone_voice` | Clone voice | audio_file, voice_name, language, quality |
+| `list_cloned_voices` | List clones | none |
+| `get_xtts_status` | XTTS status | none |
 
-### Environment Variables for Development
-Key variables to understand:
-- `TTS_NOTIFY_MODE`: Force specific execution mode
-- `TTS_NOTIFY_PROFILE`: Use predefined configuration profile
-- `TTS_NOTIFY_DEBUG_MODE`: Enable debug logging
-- `TTS_NOTIFY_LOG_LEVEL`: Set logging level (DEBUG/INFO/WARN/ERROR)
-
-### Voice System Understanding
-The voice system parses macOS `say -v ?` output and categorizes voices into Español, Enhanced, Premium, Siri, and Others. It implements a 3-tier search algorithm (exact → prefix → partial → fallback) and caches results for 5 minutes to improve performance from ~2s to ~0.5s detection time.
-
-### Interface Integration Points
-All interfaces use the same core components:
-- `VoiceManager` for voice operations
-- `MacOSTTSEngine` for audio synthesis
-- `TTSConfig` for configuration
-- Voice detection and caching is shared across interfaces
-
-## Testing Strategy
-
-The project uses manual testing for TTS functionality and automated testing for configuration and models. Voice detection varies across macOS versions and voice installations, making automated voice testing challenging.
-
-### Test Categories
-- **Unit tests**: Core models, configuration validation
-- **Integration tests**: CLI interface, API endpoints
-- **Manual tests**: Voice operations, TTS synthesis, MCP integration
-
-### Running Single Tests
+### Installation Requirements
 ```bash
-# Test specific functionality
-pytest tests/test_core.py::TestModels::test_voice_creation
+# v3.0.0 features require CoquiTTS installation:
+./installers/install.sh coqui              # Auto-installation with validation
+tts-notify --install-coqui              # Interactive installation
+tts-notify --installation-status          # Check what's installed
 
-# Test with verbose output
-pytest -v tests/test_api.py
-
-# Test specific marker
-pytest -m "integration and not slow"
+# Installation status command shows:
+# macOS Engine: ✅ Always available
+# CoquiTTS Engine: ❌ Not installed (run --install-coqui)
+# Audio Pipeline: ❌ Dependencies missing (run --install-coqui)
 ```
 
-## Important Implementation Details
+#### Installation Status Commands
+```bash
+# Verify current installation
+tts-notify --installation-status          # Shows: macOS ✅, CoquiTTS ❌, Pipeline ❌
 
-### Async Architecture
-All TTS operations are async using `asyncio.create_subprocess_exec()`. The MCP server and API are fully async, while the CLI uses `asyncio.run()` to bridge sync/async boundaries.
+# Test CoquiTTS components (if installed)
+tts-notify --test-installation           # Tests all v3.0.0 components
+tts-notify --cloning-status               # Tests voice cloning functionality
+tts-notify --pipeline-status               # Tests audio processing setup
+```
 
-### Error Handling
-Custom exception hierarchy in `src/core/exceptions.py` with detailed error context. All interfaces implement comprehensive error handling with fallback behaviors.
+#### v3.0.0 Architecture Status
+- **Phase A (Multi-Language Engine)**: ✅ Architecture complete, installation pending
+- **Phase B (Voice Cloning)**: ✅ Implementation complete, dependencies pending  
+- **Phase C (Audio Pipeline)**: ✅ Implementation complete, dependencies pending
+- **Dual-Engine System**: ✅ Runtime engine switching implemented
+- **Optional Dependencies**: ✅ Architecture for graceful degradation working
 
-### Cross-Platform Considerations
-While designed for macOS TTS, the architecture supports Linux and Windows with appropriate TTS engines. The installer handles platform detection and dependency management.
+### Installation Priority
+1. **Install Core Dependencies** (always works):
+   ```bash
+   pip install ".[dev]"  # v2.0.0 functionality
+   ```
 
-### Performance Optimizations
-- Voice caching with 5-minute TTL
-- Connection pooling for subprocess operations
-- Memory-efficient voice data handling
-- Rate limiting built into request processing
+2. **Install CoquiTTS Engine** (enables v3.0.0):
+   ```bash
+   ./installers/install.sh coqui
+   tts-notify --test-installation  # Verify installation
+   ```
 
-## Entry Points Summary
+3. **Install Feature-Specific Dependencies**:
+   ```bash
+   pip install ".[coqui-cloning]"    # Voice cloning
+   pip install ".[audio-pipeline]"    # Audio processing
+   ```
 
-- **`src/main.py`**: Main orchestrator with intelligent mode detection
-- **`src/__main__.py`**: Package entry point calling orchestrator
-- **`src/ui/cli/main.py`**: CLI interface
-- **`src/ui/mcp/server.py`**: MCP server for Claude Desktop
-- **`src/ui/api/server.py`**: REST API with FastAPI
-- **`src/installer/installer.py`**: UV-based unified installer
-- **`installers/*.sh/.bat/.ps1`**: Platform-specific installation scripts
+### Graceful Degradation
+All v3.0.0 features fall back to macOS native engine if CoquiTTS is not installed, maintaining 100% backward compatibility.

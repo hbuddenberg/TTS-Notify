@@ -12,15 +12,31 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-# Import from the new modular architecture
+try:
+    from tqdm import tqdm
+
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+
 from ...core.config_manager import config_manager
 from ...core.voice_system import VoiceManager, VoiceFilter
 from ...core.tts_engine import engine_registry, bootstrap_engines
 from ...core.models import (
-    TTSRequest, AudioFormat, TTSEngineType, Voice,
-    VoiceCloningRequest, VoiceCloningResponse
+    TTSRequest,
+    AudioFormat,
+    TTSEngineType,
+    Voice,
+    VoiceCloningRequest,
+    VoiceCloningResponse,
 )
-from ...core.exceptions import TTSNotifyError, VoiceNotFoundError, ValidationError, TTSError, EngineNotAvailableError
+from ...core.exceptions import (
+    TTSNotifyError,
+    VoiceNotFoundError,
+    ValidationError,
+    TTSError,
+    EngineNotAvailableError,
+)
 from ...core.installer import coqui_installer
 from ...utils.logger import setup_logging, get_logger
 
@@ -46,9 +62,7 @@ class TTSNotifyCLI:
     def setup_logging(self):
         """Setup logging based on configuration"""
         config = self.config_manager.get_config()
-        setup_logging(
-            level=getattr(config, 'TTS_NOTIFY_LOG_LEVEL', 'INFO')
-        )
+        setup_logging(level=getattr(config, "TTS_NOTIFY_LOG_LEVEL", "INFO"))
         self.logger = get_logger(__name__)
 
     def create_parser(self) -> argparse.ArgumentParser:
@@ -65,29 +79,35 @@ Ejemplos (v2.0.0 + v3.0.0 CoquiTTS):
   tts-notify "Bonjour le monde" --engine coqui --model xtts_v2 --language fr
   tts-notify --list
   tts-notify --list-languages              # Listar idiomas CoquiTTS
-  tts-notify --download-language fr        # Descargar idioma francés
+  tts-notify --download-language fr        # Descargar idioma frances
   tts-notify --model-status                # Estado de modelos CoquiTTS
   tts-notify --list --compact
   tts-notify --list --gen female
   tts-notify --list --lang es_ES
   tts-notify "Test" --save output_file
-  tts-notify --mcp-config                 # Mostrar configuración MCP para Claude Desktop
+  tts-notify --mcp-config                 # Mostrar configuracion MCP para Claude Desktop
 
-Para búsqueda flexible de voces:
-  tts-notify "Test" --voice angelica     # Encuentra Angélica
+Para busqueda flexible de voces:
+  tts-notify "Test" --voice angelica     # Encuentra Angelica
   tts-notify "Test" --voice "jorge enhanced"  # Variante Enhanced
-  tts-notify "Test" --voice siri         # Siri si está instalada
+  tts-notify "Test" --voice siri         # Siri si esta instalada
 
 CoquiTTS (v3.0.0+):
   tts-notify "Hello" --engine coqui --voice Daniel --language en
   tts-notify "Hola" --engine coqui --language es --force-language
+
+XTTS v2 Emotions (FASE 3):
+  tts-notify "Great news!" --xtts --emotion happy
+  tts-notify "Urgent alert" --xtts --emotion urgent
+  tts-notify "Calm down" --xtts --emotion calm --temperature 0.3
+  tts-notify "Save with emotion" --xtts --emotion sad --save output.wav
 
 Voice Cloning (Phase B):
   tts-notify --clone-voice sample.wav --voice-name MiVoz --clone-language es
   tts-notify --list-cloned                        # Listar voces clonadas
   tts-notify --cloning-status                     # Estado del sistema
   tts-notify --delete-clone VOICE_ID              # Eliminar voz clonada
-  tts-notify --enable-cloning                     # Activar clonación
+  tts-notify --enable-cloning                     # Activar clonacion
 
 Audio Pipeline (Phase C):
   tts-notify --pipeline-status                    # Estado del pipeline
@@ -99,269 +119,337 @@ Installation & Testing:
   tts-notify --install-coqui                      # Instalar CoquiTTS
   tts-notify --install-coqui-gpu                   # Instalar CoquiTTS con GPU
   tts-notify --install-all                          # Instalar todo (CoquiTTS + deps + FFmpeg)
-  tts-notify --test-installation                  # Probar instalación completa
-  tts-notify --installation-status               # Estado de la instalación
-            """
+  tts-notify --test-installation                  # Probar instalacion completa
+  tts-notify --installation-status               # Estado de la instalacion
+            """,
         )
 
         # Text argument
-        parser.add_argument(
-            "text",
-            nargs="?",
-            help="Texto a reproducir en voz alta"
-        )
+        parser.add_argument("text", nargs="?", help="Texto a reproducir en voz alta")
 
         # Voice options
         parser.add_argument(
-            "--voice", "-v",
-            help="Voz a utilizar (búsqueda flexible: exacta, parcial, sin acentos)"
+            "--voice",
+            "-v",
+            help="Voz a utilizar (búsqueda flexible: exacta, parcial, sin acentos)",
         )
         parser.add_argument(
-            "--rate", "-r",
+            "--rate",
+            "-r",
             type=int,
-            help="Velocidad de habla (palabras por minuto, 100-300)"
+            help="Velocidad de habla (palabras por minuto, 100-300)",
         )
         parser.add_argument(
-            "--pitch",
-            type=float,
-            help="Tono de la voz (0.5-2.0, donde 1.0 es normal)"
+            "--pitch", type=float, help="Tono de la voz (0.5-2.0, donde 1.0 es normal)"
         )
         parser.add_argument(
-            "--volume",
-            type=float,
-            help="Volumen (0.0-1.0, donde 1.0 es máximo)"
+            "--volume", type=float, help="Volumen (0.0-1.0, donde 1.0 es máximo)"
         )
 
         # Engine selection (v3.0.0+)
         parser.add_argument(
-            "--engine", "-e",
+            "--engine",
+            "-e",
             choices=["macos", "coqui"],
-            help="Motor TTS a utilizar (default: configurado en TTS_NOTIFY_ENGINE)"
+            help="Motor TTS a utilizar (default: configurado en TTS_NOTIFY_ENGINE)",
         )
         parser.add_argument(
-            "--model", "-m",
-            help="Modelo CoquiTTS específico (default: xtts_v2)"
+            "--model", "-m", help="Modelo CoquiTTS específico (default: xtts_v2)"
         )
         parser.add_argument(
-            "--language", "-L",
-            choices=["auto", "en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko"],
-            help="Idioma para CoquiTTS (auto=detección automática)"
+            "--language",
+            "-L",
+            choices=[
+                "auto",
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "nl",
+                "pl",
+                "ru",
+                "zh",
+                "ja",
+                "ko",
+            ],
+            help="Idioma para CoquiTTS (auto=detección automática)",
         )
         parser.add_argument(
             "--force-language",
             action="store_true",
-            help="Forzar idioma específico ignorando detección automática"
+            help="Forzar idioma específico ignorando detección automática",
+        )
+
+        # XTTS v2 Emotion and Style (FASE 3)
+        parser.add_argument(
+            "--emotion",
+            "-E",
+            choices=["neutral", "happy", "sad", "urgent", "calm"],
+            help="Emocion para XTTS v2 (neutral, happy, sad, urgent, calm)",
+        )
+        parser.add_argument(
+            "--temperature",
+            "-T",
+            type=float,
+            help="Temperatura para XTTS v2 (0.1-1.0, controla variabilidad)",
+        )
+        parser.add_argument(
+            "--xtts",
+            action="store_true",
+            help="Usar motor XTTS v2 explicitamente (alias para --engine coqui)",
         )
 
         # CoquiTTS management commands (v3.0.0+)
         parser.add_argument(
             "--list-languages",
             action="store_true",
-            help="Listar idiomas disponibles en CoquiTTS"
+            help="Listar idiomas disponibles en CoquiTTS",
         )
         parser.add_argument(
             "--download-language",
             metavar="LANG",
-            choices=["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko"],
-            help="Descargar modelo para idioma específico de CoquiTTS"
+            choices=[
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "nl",
+                "pl",
+                "ru",
+                "zh",
+                "ja",
+                "ko",
+            ],
+            help="Descargar modelo para idioma específico de CoquiTTS",
         )
         parser.add_argument(
             "--model-status",
             action="store_true",
-            help="Mostrar estado de los modelos CoquiTTS"
+            help="Mostrar estado de los modelos CoquiTTS",
         )
 
         # Phase B: Voice Cloning Commands
         parser.add_argument(
             "--clone-voice",
             metavar="AUDIO_FILE",
-            help="Clonar voz desde archivo de audio (Ej: --clone-voice sample.wav --voice-name MiVoz)"
+            help="Clonar voz desde archivo de audio (Ej: --clone-voice sample.wav --voice-name MiVoz)",
         )
         parser.add_argument(
             "--voice-name",
             metavar="NAME",
-            help="Nombre para la voz clonada (requerido con --clone-voice)"
+            help="Nombre para la voz clonada (requerido con --clone-voice)",
         )
         parser.add_argument(
             "--clone-language",
             metavar="LANG",
-            choices=["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko"],
-            help="Idioma para clonación de voz"
+            choices=[
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "nl",
+                "pl",
+                "ru",
+                "zh",
+                "ja",
+                "ko",
+            ],
+            help="Idioma para clonación de voz",
         )
         parser.add_argument(
             "--clone-quality",
             choices=["low", "medium", "high", "ultra"],
             default="high",
-            help="Calidad de clonación de voz (default: high)"
+            help="Calidad de clonación de voz (default: high)",
         )
         parser.add_argument(
-            "--list-cloned",
-            action="store_true",
-            help="Listar voces clonadas"
+            "--list-cloned", action="store_true", help="Listar voces clonadas"
         )
         parser.add_argument(
-            "--delete-clone",
-            metavar="VOICE_ID",
-            help="Eliminar voz clonada específica"
+            "--delete-clone", metavar="VOICE_ID", help="Eliminar voz clonada específica"
         )
         parser.add_argument(
             "--cloning-status",
             action="store_true",
-            help="Mostrar estado del sistema de clonación de voz"
+            help="Mostrar estado del sistema de clonación de voz",
+        )
+        parser.add_argument(
+            "--max-sample-duration",
+            type=float,
+            help="Duración máxima de muestra de audio en segundos (0 para ilimitado)",
         )
         parser.add_argument(
             "--enable-cloning",
             action="store_true",
-            help="Activar sistema de clonación de voz"
+            help="Activar sistema de clonación de voz",
         )
         parser.add_argument(
             "--disable-cloning",
             action="store_true",
-            help="Desactivar sistema de clonación de voz"
+            help="Desactivar sistema de clonación de voz",
         )
 
         # Installation Commands
         parser.add_argument(
             "--install-coqui",
             action="store_true",
-            help="Instalar CoquiTTS y dependencias básicas"
+            help="Instalar CoquiTTS y dependencias básicas",
         )
         parser.add_argument(
             "--install-coqui-gpu",
             action="store_true",
-            help="Instalar CoquiTTS con soporte GPU (requiere CUDA)"
+            help="Instalar CoquiTTS con soporte GPU (requiere CUDA)",
         )
         parser.add_argument(
             "--install-all",
             action="store_true",
-            help="Instalar todas las dependencias (CoquiTTS + audio + FFmpeg)"
+            help="Instalar todas las dependencias (CoquiTTS + audio + FFmpeg)",
         )
         parser.add_argument(
             "--install-all-gpu",
             action="store_true",
-            help="Instalar todas las dependencias con soporte GPU"
+            help="Instalar todas las dependencias con soporte GPU",
         )
         parser.add_argument(
             "--install-deps",
             action="store_true",
-            help="Instalar dependencias de audio (librosa, soundfile, etc.)"
+            help="Instalar dependencias de audio (librosa, soundfile, etc.)",
         )
         parser.add_argument(
             "--test-installation",
             action="store_true",
-            help="Probar instalación completa de CoquiTTS"
+            help="Probar instalación completa de CoquiTTS",
         )
         parser.add_argument(
             "--installation-status",
             action="store_true",
-            help="Mostrar estado actual de instalación"
+            help="Mostrar estado actual de instalación",
         )
 
         # Phase C: Audio Pipeline Commands
         parser.add_argument(
             "--pipeline-status",
             action="store_true",
-            help="Mostrar estado del pipeline de audio"
+            help="Mostrar estado del pipeline de audio",
         )
         parser.add_argument(
             "--enable-pipeline",
             action="store_true",
-            help="Activar pipeline de procesamiento de audio"
+            help="Activar pipeline de procesamiento de audio",
         )
         parser.add_argument(
             "--disable-pipeline",
             action="store_true",
-            help="Desactivar pipeline de procesamiento de audio"
+            help="Desactivar pipeline de procesamiento de audio",
         )
         parser.add_argument(
             "--process-audio",
             metavar="INPUT_FILE",
-            help="Procesar archivo de audio con pipeline avanzado"
+            help="Procesar archivo de audio con pipeline avanzado",
         )
         parser.add_argument(
             "--output-format",
             choices=["wav", "mp3", "ogg", "flac", "aiff"],
-            help="Formato de salida para procesamiento de audio"
+            help="Formato de salida para procesamiento de audio",
         )
         parser.add_argument(
             "--audio-quality",
             choices=["low", "medium", "high", "ultra"],
             default="high",
-            help="Calidad de procesamiento de audio (default: high)"
+            help="Calidad de procesamiento de audio (default: high)",
         )
         parser.add_argument(
             "--target-language",
-            choices=["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko"],
-            help="Idioma objetivo para optimización de audio"
+            choices=[
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "nl",
+                "pl",
+                "ru",
+                "zh",
+                "ja",
+                "ko",
+            ],
+            help="Idioma objetivo para optimización de audio",
         )
 
         # Listing options
         parser.add_argument(
-            "--list", "-l",
+            "--list",
+            "-l",
             action="store_true",
-            help="Listar todas las voces disponibles del sistema"
+            help="Listar todas las voces disponibles del sistema",
         )
         parser.add_argument(
             "--compact",
             action="store_true",
-            help="Formato compacto para listar voces (solo nombres)"
+            help="Formato compacto para listar voces (solo nombres)",
         )
         parser.add_argument(
-            "--gen", "--gender",
+            "--gen",
+            "--gender",
             choices=["male", "female"],
-            help="Filtrar voces por género"
+            help="Filtrar voces por género",
         )
         parser.add_argument(
-            "--lang",
-            help="Filtrar voces por idioma (ej: es, en, es_ES, es_MX)"
+            "--lang", help="Filtrar voces por idioma (ej: es, en, es_ES, es_MX)"
         )
 
         # Output options
         parser.add_argument(
-            "--save", "-s",
-            help="Guardar audio en archivo en lugar de reproducir"
+            "--save", "-s", help="Guardar audio en archivo en lugar de reproducir"
         )
         parser.add_argument(
             "--format",
             choices=["aiff", "wav", "mp3", "ogg", "m4a", "flac"],
             default="aiff",
-            help="Formato de audio para archivo de salida (default: aiff)"
+            help="Formato de audio para archivo de salida (default: aiff)",
         )
 
         # Configuration options
         parser.add_argument(
-            "--profile",
-            help="Usar perfil de configuración predefinido"
+            "--profile", help="Usar perfil de configuración predefinido"
         )
         parser.add_argument(
-            "--verbose",
-            action="store_true",
-            help="Mostrar información detallada"
+            "--verbose", action="store_true", help="Mostrar información detallada"
         )
         parser.add_argument(
-            "--debug",
-            action="store_true",
-            help="Mostrar información de depuración"
+            "--debug", action="store_true", help="Mostrar información de depuración"
         )
 
         # MCP configuration
         parser.add_argument(
             "--mcp-config",
             action="store_true",
-            help="Mostrar configuración MCP para Claude Desktop con rutas reales"
+            help="Mostrar configuración MCP para Claude Desktop con rutas reales",
         )
 
         # Version
         parser.add_argument(
             "--version",
             action="version",
-            version="%(prog)s 3.0.0 (Phase A - CoquiTTS Integration)"
+            version="%(prog)s 3.0.0 (Phase A - CoquiTTS Integration)",
         )
 
         return parser
 
-    async def list_voices(self, compact: bool = False, gender: Optional[str] = None,
-                         language: Optional[str] = None, engine: Optional[str] = None) -> None:
+    async def list_voices(
+        self,
+        compact: bool = False,
+        gender: Optional[str] = None,
+        language: Optional[str] = None,
+        engine: Optional[str] = None,
+    ) -> None:
         """List available voices with optional filtering"""
         try:
             # Initialize engines first
@@ -369,7 +457,7 @@ Installation & Testing:
 
             if engine == "coqui":
                 # For CoquiTTS, list available speakers for the current model
-                await self._list_coqui_voices()
+                await self._list_coqui_voices(language=language)
                 return
 
             voices = await self.voice_manager.get_all_voices()
@@ -377,7 +465,9 @@ Installation & Testing:
             # Apply filters
             if gender or language:
                 voice_filter = VoiceFilter()
-                voices = voice_filter.filter_voices(voices, gender=gender, language=language)
+                voices = voice_filter.filter_voices(
+                    voices, gender=gender, language=language
+                )
 
             if not voices:
                 print("No se encontraron voces con los filtros especificados.")
@@ -406,12 +496,23 @@ Installation & Testing:
         for voice in voices:
             voice_name_lower = voice.name.lower()
 
-            if any(espanol_marker in voice_name_lower for espanol_marker in
-                   ['espanol', 'español', 'spain', 'mexico', 'mexico', 'argentina', 'colombia', 'chile']):
+            if any(
+                espanol_marker in voice_name_lower
+                for espanol_marker in [
+                    "espanol",
+                    "español",
+                    "spain",
+                    "mexico",
+                    "mexico",
+                    "argentina",
+                    "colombia",
+                    "chile",
+                ]
+            ):
                 espanol.append(voice)
-            elif 'siri' in voice_name_lower:
+            elif "siri" in voice_name_lower:
                 siri.append(voice)
-            elif 'enhanced' in voice_name_lower or 'premium' in voice_name_lower:
+            elif "enhanced" in voice_name_lower or "premium" in voice_name_lower:
                 enhanced.append(voice)
             else:
                 other.append(voice)
@@ -420,45 +521,106 @@ Installation & Testing:
         if espanol:
             print("\n🇪🇸  VOCES ESPAÑOL:")
             for voice in sorted(espanol, key=lambda v: v.name):
-                gender_symbol = "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                gender_symbol = (
+                    "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                )
                 quality = voice.quality.value if voice.quality else "basic"
                 print(f"  {gender_symbol} {voice.name} ({quality})")
 
         if enhanced:
             print("\n✨ VOCES ENHANCED:")
             for voice in sorted(enhanced, key=lambda v: v.name):
-                gender_symbol = "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                gender_symbol = (
+                    "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                )
                 quality = voice.quality.value if voice.quality else "enhanced"
                 print(f"  {gender_symbol} {voice.name} ({quality})")
 
         if siri:
             print("\n🍎 VOCES SIRI:")
             for voice in sorted(siri, key=lambda v: v.name):
-                gender_symbol = "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                gender_symbol = (
+                    "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                )
                 print(f"  {gender_symbol} {voice.name}")
 
         if other:
             print("\n🌍 OTRAS VOCES:")
             for voice in sorted(other, key=lambda v: v.name):
-                gender_symbol = "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                gender_symbol = (
+                    "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                )
                 lang = voice.language.value if voice.language else "unknown"
                 print(f"  {gender_symbol} {voice.name} ({lang})")
 
         print(f"\nTotal: {len(voices)} voces disponibles")
 
-    async def _list_coqui_voices(self) -> None:
-        """List CoquiTTS available voices/speakers"""
+    async def _list_coqui_voices(self, language: Optional[str] = None) -> None:
+        """List CoquiTTS available voices/speakers
+
+        Args:
+            language: Optional language code to filter voices (e.g., 'es', 'en', 'fr')
+        """
         try:
             coqui_engine = engine_registry.get("coqui")
             if coqui_engine:
                 voices = await coqui_engine.get_supported_voices()
 
+                # Check if the current model is multi-lingual
+                is_multi_lingual = False
+                if hasattr(coqui_engine, "model_name"):
+                    model_name = coqui_engine.model_name
+                    # Check if it's one of the known multi-lingual models
+                    if (
+                        "multilingual" in model_name.lower()
+                        or "xtts" in model_name.lower()
+                    ):
+                        is_multi_lingual = True
+                        # Get supported languages from model info
+                        if hasattr(coqui_engine, "_get_model_info"):
+                            model_info = coqui_engine._get_model_info(model_name)
+                            if model_info and hasattr(model_info, "languages"):
+                                supported_langs = model_info.languages
+                            else:
+                                supported_langs = []
+                        else:
+                            supported_langs = []
+
                 print("\n🤖 VOCES COQUITTS:")
+                if language:
+                    if is_multi_lingual:
+                        # For multi-lingual models, check if the requested language is supported
+                        if supported_langs and language in supported_langs:
+                            print(
+                                f"   Filtrado por idioma: {language} (todas las voces soportan este idioma)"
+                            )
+                        elif supported_langs and language not in supported_langs:
+                            print(
+                                f"   ⚠️  Idioma '{language}' no está soportado por este modelo"
+                            )
+                            print(
+                                f"   Idiomas disponibles: {', '.join(supported_langs)}"
+                            )
+                            voices = []  # Clear voices to show none
+                        else:
+                            print(f"   Filtrado por idioma: {language}")
+                    else:
+                        # For single-language models, filter by the voice's assigned language
+                        voices = [
+                            v
+                            for v in voices
+                            if v.language and v.language.value == language
+                        ]
+                        print(f"   Filtrado por idioma: {language}")
                 print("=" * 40)
 
                 if voices:
                     for voice in sorted(voices, key=lambda v: v.name):
-                        gender_symbol = "♂" if voice.gender and voice.gender.value == "male" else "♀"
+                        gender_symbol = (
+                            "♂"
+                            if voice.gender and voice.gender.value == "male"
+                            else "♀"
+                        )
                         lang = voice.language.value if voice.language else "unknown"
                         quality = voice.quality.value if voice.quality else "basic"
                         print(f"  {gender_symbol} {voice.name} ({lang}, {quality})")
@@ -467,10 +629,14 @@ Installation & Testing:
                     print(f"\nTotal: {len(voices)} voces CoquiTTS")
                 else:
                     print("  No se encontraron voces CoquiTTS disponibles")
-                    print("  Ejecute: tts-notify --model-status para verificar el estado")
+                    print(
+                        "  Ejecute: tts-notify --model-status para verificar el estado"
+                    )
             else:
                 print("❌ Motor CoquiTTS no disponible")
-                print("   Instale con: pip install coqui-tts o configure TTS_NOTIFY_ENGINE=coqui")
+                print(
+                    "   Instale con: pip install coqui-tts o configure TTS_NOTIFY_ENGINE=coqui"
+                )
 
         except EngineNotAvailableError:
             print("❌ Motor CoquiTTS no disponible")
@@ -482,7 +648,7 @@ Installation & Testing:
         """List available CoquiTTS languages"""
         try:
             coqui_engine = engine_registry.get("coqui")
-            if coqui_engine and hasattr(coqui_engine, 'multi_language_models'):
+            if coqui_engine and hasattr(coqui_engine, "multi_language_models"):
                 print("\n🌍 IDIOMAS DISPONIBLES EN COQUITTS:")
                 print("=" * 50)
 
@@ -499,10 +665,18 @@ Installation & Testing:
                     print(f"\n📋 Idiomas disponibles:")
                     for i, lang in enumerate(model_info.languages, 1):
                         lang_names = {
-                            "en": "Inglés", "es": "Español", "fr": "Francés",
-                            "de": "Alemán", "it": "Italiano", "pt": "Portugués",
-                            "nl": "Neerlandés", "pl": "Polaco", "ru": "Ruso",
-                            "zh": "Chino", "ja": "Japonés", "ko": "Coreano"
+                            "en": "Inglés",
+                            "es": "Español",
+                            "fr": "Francés",
+                            "de": "Alemán",
+                            "it": "Italiano",
+                            "pt": "Portugués",
+                            "nl": "Neerlandés",
+                            "pl": "Polaco",
+                            "ru": "Ruso",
+                            "zh": "Chino",
+                            "ja": "Japonés",
+                            "ko": "Coreano",
                         }
                         lang_name = lang_names.get(lang, lang.upper())
                         print(f"  {i:2d}. {lang} ({lang_name})")
@@ -515,19 +689,38 @@ Installation & Testing:
             print(f"❌ Error listando idiomas: {e}")
 
     async def download_language(self, language: str) -> None:
-        """Download CoquiTTS language model"""
+        """Download CoquiTTS language model with progress bar"""
         try:
             print(f"📥 Descargando idioma '{language}' para CoquiTTS...")
 
             coqui_engine = engine_registry.get("coqui")
-            if coqui_engine and hasattr(coqui_engine, 'ensure_language_available'):
-                success = await coqui_engine.ensure_language_available(language)
+            if coqui_engine and hasattr(coqui_engine, "ensure_language_available"):
+                model_info = None
+                if hasattr(coqui_engine, "multi_language_models"):
+                    for model_name, info in coqui_engine.multi_language_models.items():
+                        if language in info.languages:
+                            model_info = info
+                            break
+
+                if TQDM_AVAILABLE and model_info:
+                    total_mb = int(model_info.size_gb * 1024)
+                    with tqdm(
+                        total=total_mb,
+                        unit="MB",
+                        desc=f"Descargando {language}",
+                        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}MB [{elapsed}<{remaining}]",
+                    ) as pbar:
+                        success = await coqui_engine.ensure_language_available(language)
+                        if success:
+                            pbar.update(total_mb)
+                else:
+                    success = await coqui_engine.ensure_language_available(language)
 
                 if success:
                     print(f"✅ Idioma '{language}' descargado y disponible")
                 else:
                     print(f"❌ Error descargando idioma '{language}'")
-                    print("   Verifique su conexión a internet y espacio en disco")
+                    print("   Verifique su conexion a internet y espacio en disco")
             else:
                 print("❌ Motor CoquiTTS no disponible")
 
@@ -561,7 +754,7 @@ Installation & Testing:
                         print(f"   • GPU: {'Sí' if coqui_engine.use_gpu else 'No'}")
 
                         # Check model download status
-                        if hasattr(coqui_engine, 'is_model_downloaded'):
+                        if hasattr(coqui_engine, "is_model_downloaded"):
                             downloaded = coqui_engine.is_model_downloaded()
                             print(f"   • Descargado: {'Sí' if downloaded else 'No'}")
                     else:
@@ -575,7 +768,9 @@ Installation & Testing:
             # Configuration
             print(f"\n⚙️  Configuración:")
             print(f"   • Motor por defecto: {config.TTS_NOTIFY_ENGINE}")
-            print(f"   • Auto-descargar modelos: {config.TTS_NOTIFY_AUTO_DOWNLOAD_MODELS}")
+            print(
+                f"   • Auto-descargar modelos: {config.TTS_NOTIFY_AUTO_DOWNLOAD_MODELS}"
+            )
             print(f"   • Modo offline: {config.TTS_NOTIFY_COQUI_OFFLINE_MODE}")
             print(f"   • Usar GPU: {config.TTS_NOTIFY_COQUI_USE_GPU}")
             print(f"   • Cache modelos: {config.TTS_NOTIFY_COQUI_CACHE_MODELS}")
@@ -592,11 +787,23 @@ Installation & Testing:
 
     # Phase B: Voice Cloning Methods
 
-    async def clone_voice(self, audio_file: str, voice_name: str, language: Optional[str] = None,
-                         quality: str = "high") -> None:
+    async def clone_voice(
+        self,
+        audio_file: str,
+        voice_name: str,
+        language: Optional[str] = None,
+        quality: str = "high",
+        max_sample_duration: Optional[float] = None,
+    ) -> None:
         """Clone a voice from audio file"""
         try:
             await self.initialize_engines()
+
+            # Update configuration if max_sample_duration is provided
+            if max_sample_duration is not None:
+                self.config_manager.get_config().TTS_NOTIFY_COQUI_MAX_SAMPLE_SECONDS = (
+                    max_sample_duration
+                )
 
             config = self.config_manager.get_config()
 
@@ -632,11 +839,11 @@ Installation & Testing:
                 denoise=config.TTS_NOTIFY_COQUI_CLONING_DENOISE,
                 auto_optimize=config.TTS_NOTIFY_COQUI_AUTO_OPTIMIZE_CLONE,
                 batch_size=config.TTS_NOTIFY_COQUI_CLONING_BATCH_SIZE,
-                timeout=config.TTS_NOTIFY_COQUI_CLONING_TIMEOUT
+                timeout=config.TTS_NOTIFY_COQUI_CLONING_TIMEOUT,
             )
 
             # Validate request
-            if hasattr(coqui_engine, 'validate_cloning_request'):
+            if hasattr(coqui_engine, "validate_cloning_request"):
                 errors = await coqui_engine.validate_cloning_request(cloning_request)
                 if errors:
                     print("❌ Errores de validación:")
@@ -659,10 +866,14 @@ Installation & Testing:
                     print(f"   🎯 Optimización: {response.optimization_score:.2f}")
 
                 if response.processing_time:
-                    print(f"   ⏱️  Tiempo procesamiento: {response.processing_time:.2f}s")
+                    print(
+                        f"   ⏱️  Tiempo procesamiento: {response.processing_time:.2f}s"
+                    )
 
                 print(f"\n💡 Usa la voz clonada con:")
-                print(f"   tts-notify \"Hola mundo\" --engine coqui --voice \"{response.voice.name}\"")
+                print(
+                    f'   tts-notify "Hola mundo" --engine coqui --voice "{response.voice.name}"'
+                )
             else:
                 print(f"❌ Error en clonación: {response.error}")
                 if response.warnings:
@@ -693,7 +904,9 @@ Installation & Testing:
             if not cloned_voices:
                 print("   No hay voces clonadas disponibles")
                 print("\n💡 Clona una voz con:")
-                print("   tts-notify --clone-voice sample.wav --voice-name MiVoz --clone-language es")
+                print(
+                    "   tts-notify --clone-voice sample.wav --voice-name MiVoz --clone-language es"
+                )
                 return
 
             for i, voice in enumerate(cloned_voices, 1):
@@ -758,9 +971,15 @@ Installation & Testing:
 
             # Basic configuration
             print(f"\n⚙️  Configuración:")
-            print(f"   • Clonación habilitada: {config.TTS_NOTIFY_COQUI_ENABLE_CLONING}")
-            print(f"   • Calidad por defecto: {config.TTS_NOTIFY_COQUI_CLONING_QUALITY}")
-            print(f"   • Auto-optimización: {config.TTS_NOTIFY_COQUI_AUTO_OPTIMIZE_CLONE}")
+            print(
+                f"   • Clonación habilitada: {config.TTS_NOTIFY_COQUI_ENABLE_CLONING}"
+            )
+            print(
+                f"   • Calidad por defecto: {config.TTS_NOTIFY_COQUI_CLONING_QUALITY}"
+            )
+            print(
+                f"   • Auto-optimización: {config.TTS_NOTIFY_COQUI_AUTO_OPTIMIZE_CLONE}"
+            )
             print(f"   • Normalización: {config.TTS_NOTIFY_COQUI_CLONING_NORMALIZE}")
             print(f"   • Reducción de ruido: {config.TTS_NOTIFY_COQUI_CLONING_DENOISE}")
             print(f"   • Tamaño batch: {config.TTS_NOTIFY_COQUI_CLONING_BATCH_SIZE}")
@@ -772,23 +991,29 @@ Installation & Testing:
 
                 print(f"\n🤖 Motor CoquiTTS:")
                 print(f"   • Disponible: ✅")
-                print(f"   • Inicializado: {cloning_status.get('engine_initialized', False)}")
-                print(f"   • Soporta clonación: {cloning_status.get('supports_cloning', False)}")
+                print(
+                    f"   • Inicializado: {cloning_status.get('engine_initialized', False)}"
+                )
+                print(
+                    f"   • Soporta clonación: {cloning_status.get('supports_cloning', False)}"
+                )
 
-                if 'profile_count' in cloning_status:
+                if "profile_count" in cloning_status:
                     print(f"\n📊 Estadísticas:")
                     print(f"   • Voces clonadas: {cloning_status['profile_count']}")
-                    print(f"   • Embeddings: {cloning_status.get('embedding_count', 0)}")
+                    print(
+                        f"   • Embeddings: {cloning_status.get('embedding_count', 0)}"
+                    )
 
-                if 'storage_usage' in cloning_status:
-                    storage = cloning_status['storage_usage']
+                if "storage_usage" in cloning_status:
+                    storage = cloning_status["storage_usage"]
                     print(f"\n💾 Almacenamiento:")
                     print(f"   • Perfiles: {storage.get('profiles_mb', 0):.1f} MB")
                     print(f"   • Embeddings: {storage.get('embeddings_mb', 0):.1f} MB")
                     print(f"   • Total: {storage.get('total_mb', 0):.1f} MB")
 
-                if 'directories' in cloning_status:
-                    dirs = cloning_status['directories']
+                if "directories" in cloning_status:
+                    dirs = cloning_status["directories"]
                     print(f"\n📁 Directorios:")
                     print(f"   • Perfiles: {dirs.get('profiles', 'N/A')}")
                     print(f"   • Embeddings: {dirs.get('embeddings', 'N/A')}")
@@ -832,9 +1057,13 @@ Installation & Testing:
 
     # Phase C: Audio Pipeline Methods
 
-    async def process_audio_file(self, input_file: str, output_format: Optional[str] = None,
-                               target_language: Optional[str] = None,
-                               audio_quality: str = "high") -> None:
+    async def process_audio_file(
+        self,
+        input_file: str,
+        output_format: Optional[str] = None,
+        target_language: Optional[str] = None,
+        audio_quality: str = "high",
+    ) -> None:
         """Process audio file through the advanced pipeline"""
         try:
             await self.initialize_engines()
@@ -855,7 +1084,7 @@ Installation & Testing:
                 sys.exit(1)
 
             # Determine source and target formats
-            source_format = AudioFormat(input_path.suffix.lower().lstrip('.'))
+            source_format = AudioFormat(input_path.suffix.lower().lstrip("."))
             target_format_enum = AudioFormat(output_format or source_format.value)
 
             # Read input audio
@@ -875,7 +1104,7 @@ Installation & Testing:
                 source_format=source_format,
                 target_format=target_format_enum,
                 language=target_language,
-                quality_level=audio_quality
+                quality_level=audio_quality,
             )
 
             # Generate output filename
@@ -887,26 +1116,30 @@ Installation & Testing:
             # Display results
             print(f"\n✅ Audio procesado exitosamente:")
             print(f"   📁 Salida: {output_path}")
-            print(f"   📊 Tamaño original: {metrics.get('input_size_bytes', 0):,} bytes")
-            print(f"   📊 Tamaño procesado: {metrics.get('output_size_bytes', 0):,} bytes")
+            print(
+                f"   📊 Tamaño original: {metrics.get('input_size_bytes', 0):,} bytes"
+            )
+            print(
+                f"   📊 Tamaño procesado: {metrics.get('output_size_bytes', 0):,} bytes"
+            )
 
-            if metrics.get('processing_time'):
+            if metrics.get("processing_time"):
                 print(f"   ⏱️  Tiempo procesamiento: {metrics['processing_time']:.2f}s")
 
-            if metrics.get('compression_ratio'):
+            if metrics.get("compression_ratio"):
                 print(f"   📈 Compresión: {metrics['compression_ratio']:.2f}x")
 
-            if metrics.get('peak_level_dbfs'):
+            if metrics.get("peak_level_dbfs"):
                 print(f"   🔊 Nivel pico: {metrics['peak_level_dbfs']:.1f} dBFS")
 
-            if metrics.get('rms_level_dbfs'):
+            if metrics.get("rms_level_dbfs"):
                 print(f"   🔊 Nivel RMS: {metrics['rms_level_dbfs']:.1f} dBFS")
 
-            stages = metrics.get('stages_completed', [])
+            stages = metrics.get("stages_completed", [])
             if stages:
                 print(f"   🔄 Etapas completadas: {len(stages)}")
 
-            warnings = metrics.get('warnings', [])
+            warnings = metrics.get("warnings", [])
             if warnings:
                 print(f"   ⚠️  Advertencias: {len(warnings)}")
                 for warning in warnings[:3]:  # Show first 3 warnings
@@ -932,14 +1165,24 @@ Installation & Testing:
 
             # Configuration
             print(f"\n⚙️  Configuración:")
-            print(f"   • Pipeline habilitado: {config.TTS_NOTIFY_COQUI_CONVERSION_ENABLED}")
-            print(f"   • Limpieza automática: {config.TTS_NOTIFY_COQUI_AUTO_CLEAN_AUDIO}")
-            print(f"   • Recorte de silencios: {config.TTS_NOTIFY_COQUI_AUTO_TRIM_SILENCE}")
+            print(
+                f"   • Pipeline habilitado: {config.TTS_NOTIFY_COQUI_CONVERSION_ENABLED}"
+            )
+            print(
+                f"   • Limpieza automática: {config.TTS_NOTIFY_COQUI_AUTO_CLEAN_AUDIO}"
+            )
+            print(
+                f"   • Recorte de silencios: {config.TTS_NOTIFY_COQUI_AUTO_TRIM_SILENCE}"
+            )
             print(f"   • Reducción de ruido: {config.TTS_NOTIFY_COQUI_NOISE_REDUCTION}")
             print(f"   • Diarización: {config.TTS_NOTIFY_COQUI_DIARIZATION}")
             print(f"   • Formatos objetivo: {config.TTS_NOTIFY_COQUI_TARGET_FORMATS}")
-            print(f"   • Cache de embeddings: {config.TTS_NOTIFY_COQUI_EMBEDDING_CACHE}")
-            print(f"   • Formato embeddings: {config.TTS_NOTIFY_COQUI_EMBEDDING_FORMAT}")
+            print(
+                f"   • Cache de embeddings: {config.TTS_NOTIFY_COQUI_EMBEDDING_CACHE}"
+            )
+            print(
+                f"   • Formato embeddings: {config.TTS_NOTIFY_COQUI_EMBEDDING_FORMAT}"
+            )
 
             # Engine capabilities
             if coqui_engine:
@@ -948,19 +1191,27 @@ Installation & Testing:
 
                     print(f"\n🤖 Capacidades del Motor:")
                     print(f"   • Motor disponible: ✅")
-                    print(f"   • Procesamiento de audio: {'✅' if capabilities.get('audio_processing_available') else '❌'}")
-                    print(f"   • FFmpeg disponible: {'✅' if capabilities.get('ffmpeg_available') else '❌'}")
-                    print(f"   • Idiomas soportados: {len(capabilities.get('supported_languages', []))}")
+                    print(
+                        f"   • Procesamiento de audio: {'✅' if capabilities.get('audio_processing_available') else '❌'}"
+                    )
+                    print(
+                        f"   • FFmpeg disponible: {'✅' if capabilities.get('ffmpeg_available') else '❌'}"
+                    )
+                    print(
+                        f"   • Idiomas soportados: {len(capabilities.get('supported_languages', []))}"
+                    )
 
-                    supported_formats = capabilities.get('supported_formats', [])
+                    supported_formats = capabilities.get("supported_formats", [])
                     if supported_formats:
-                        print(f"   • Formatos soportados: {', '.join(supported_formats)}")
+                        print(
+                            f"   • Formatos soportados: {', '.join(supported_formats)}"
+                        )
 
-                    stages = capabilities.get('processing_stages', [])
+                    stages = capabilities.get("processing_stages", [])
                     if stages:
                         print(f"   • Etapas de procesamiento: {len(stages)}")
 
-                    temp_dir = capabilities.get('temp_directory')
+                    temp_dir = capabilities.get("temp_directory")
                     if temp_dir:
                         print(f"   • Directorio temporal: {temp_dir}")
 
@@ -1021,7 +1272,7 @@ Installation & Testing:
                 print(f"   Ubicación: {result.installed_path}")
 
                 print(f"\n💡 Ahora puedes usar el motor CoquiTTS:")
-                print(f"   tts-notify --engine coqui \"Hola mundo\"")
+                print(f'   tts-notify --engine coqui "Hola mundo"')
                 print(f"   tts-notify --list-languages")
 
                 # Re-initialize engines to pick up CoquiTTS
@@ -1043,58 +1294,93 @@ Installation & Testing:
                         print("      • Menor calidad, sin clonación")
                         print("      • Tamaño: ~100-500 MB")
                         print("   3. Omitir descarga por ahora")
-                        
+
                         choice = input("\n   Seleccione una opción [1-3]: ").strip()
-                        
+
                         if choice == "1":
-                            print(f"\n⬇️  Iniciando descarga del modelo multi-lenguaje...")
-                            success = await coqui_engine.download_model(force=True)
+                            print(
+                                f"\n⬇️  Iniciando descarga del modelo multi-lenguaje..."
+                            )
+                            model_info = coqui_engine.multi_language_models.get(
+                                coqui_engine.model_name
+                            )
+                            if TQDM_AVAILABLE and model_info:
+                                total_mb = int(model_info.size_gb * 1024)
+                                with tqdm(
+                                    total=total_mb,
+                                    unit="MB",
+                                    desc="Modelo XTTS",
+                                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}MB [{elapsed}<{remaining}]",
+                                ) as pbar:
+                                    success = await coqui_engine.download_model(
+                                        force=True
+                                    )
+                                    if success:
+                                        pbar.update(total_mb)
+                            else:
+                                success = await coqui_engine.download_model(force=True)
                             if success:
                                 print(f"✅ Modelo descargado exitosamente!")
                             else:
                                 print(f"❌ Error en la descarga del modelo.")
-                                
+
                         elif choice == "2":
                             single_models = coqui_engine.get_single_language_models()
                             available_langs = sorted(single_models.keys())
-                            
+
                             print(f"\n🗣️  Idiomas disponibles:")
                             for i, lang in enumerate(available_langs, 1):
                                 print(f"   {i}. {lang}")
-                                
-                            lang_idx = input(f"\n   Seleccione idioma [1-{len(available_langs)}]: ").strip()
-                            
+
+                            lang_idx = input(
+                                f"\n   Seleccione idioma [1-{len(available_langs)}]: "
+                            ).strip()
+
                             try:
                                 idx = int(lang_idx) - 1
                                 if 0 <= idx < len(available_langs):
                                     selected_lang = available_langs[idx]
                                     models = single_models[selected_lang]
-                                    
+
                                     success = False
                                     for model_name in models:
-                                        print(f"\n⬇️  Intentando descargar modelo: {model_name}...")
-                                        if await coqui_engine.download_model(model_name=model_name, force=True):
-                                            print(f"✅ Modelo para {selected_lang} descargado exitosamente!")
+                                        print(
+                                            f"\n⬇️  Intentando descargar modelo: {model_name}..."
+                                        )
+                                        if await coqui_engine.download_model(
+                                            model_name=model_name, force=True
+                                        ):
+                                            print(
+                                                f"✅ Modelo para {selected_lang} descargado exitosamente!"
+                                            )
                                             print(f"💡 Para usar este modelo:")
-                                            print(f"   tts-notify --engine coqui --model \"{model_name}\" ...")
+                                            print(
+                                                f'   tts-notify --engine coqui --model "{model_name}" ...'
+                                            )
                                             success = True
                                             break
                                         else:
-                                            print(f"⚠️  Fallo la descarga de {model_name}, intentando siguiente...")
-                                    
+                                            print(
+                                                f"⚠️  Fallo la descarga de {model_name}, intentando siguiente..."
+                                            )
+
                                     if not success:
-                                        print(f"❌ No se pudo descargar ningún modelo para {selected_lang}.")
+                                        print(
+                                            f"❌ No se pudo descargar ningún modelo para {selected_lang}."
+                                        )
                                 else:
                                     print("❌ Selección inválida.")
                             except ValueError:
                                 print("❌ Entrada inválida.")
-                        
+
                         elif choice == "3":
                             print("\nℹ️  Omitiendo descarga de modelos adicionales.")
-                            
+
                         else:
-                            print(f"\n❌ Opción no válida: '{choice}'. Seleccione 1, 2 o 3.")
-                                
+                            print(
+                                f"\n❌ Opción no válida: '{choice}'. Seleccione 1, 2 o 3."
+                            )
+
                 except Exception as e:
                     print(f"⚠️  Error en selección de idiomas: {e}")
 
@@ -1109,7 +1395,9 @@ Installation & Testing:
             print(f"❌ Error en instalación: {e}")
             sys.exit(1)
 
-    async def install_all_dependencies(self, use_gpu: bool = False, include_ffmpeg: bool = False) -> None:
+    async def install_all_dependencies(
+        self, use_gpu: bool = False, include_ffmpeg: bool = False
+    ) -> None:
         """Install all dependencies for full functionality"""
         try:
             print(f"🚀 Iniciando instalación completa de dependencias...")
@@ -1117,8 +1405,7 @@ Installation & Testing:
             print(f"   FFmpeg: {'Sí' if include_ffmpeg else 'No'}")
 
             results = await coqui_installer.install_all_dependencies(
-                use_gpu=use_gpu,
-                include_ffmpeg=include_ffmpeg
+                use_gpu=use_gpu, include_ffmpeg=include_ffmpeg
             )
 
             # Display results
@@ -1140,10 +1427,12 @@ Installation & Testing:
 
             if all_success:
                 print(f"\n🎉 ¡Todas las dependencias instaladas exitosamente!")
-                print(f"\n⚠️  IMPORTANTE: Debes activar el entorno virtual para usar CoquiTTS:")
+                print(
+                    f"\n⚠️  IMPORTANTE: Debes activar el entorno virtual para usar CoquiTTS:"
+                )
                 print(f"   source TTS_Notify/venv312/bin/activate")
                 print(f"\n💡 Sistema listo para uso completo (una vez activado):")
-                print(f"   tts-notify --engine coqui \"Hello world\"")
+                print(f'   tts-notify --engine coqui "Hello world"')
                 print(f"   tts-notify --pipeline-status")
                 print(f"   tts-notify --clone-voice sample.wav --voice-name MiVoz")
 
@@ -1166,47 +1455,80 @@ Installation & Testing:
                         print("      • Menor calidad, sin clonación")
                         print("      • Tamaño: ~100-500 MB")
                         print("   3. Omitir descarga por ahora")
-                        
+
                         choice = input("\n   Seleccione una opción [1-3]: ").strip()
-                        
+
                         if choice == "1":
-                            print(f"\n⬇️  Iniciando descarga del modelo multi-lenguaje...")
-                            success = await coqui_engine.download_model(force=True)
+                            print(
+                                f"\n⬇️  Iniciando descarga del modelo multi-lenguaje..."
+                            )
+                            model_info = coqui_engine.multi_language_models.get(
+                                coqui_engine.model_name
+                            )
+                            if TQDM_AVAILABLE and model_info:
+                                total_mb = int(model_info.size_gb * 1024)
+                                with tqdm(
+                                    total=total_mb,
+                                    unit="MB",
+                                    desc="Modelo XTTS",
+                                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}MB [{elapsed}<{remaining}]",
+                                ) as pbar:
+                                    success = await coqui_engine.download_model(
+                                        force=True
+                                    )
+                                    if success:
+                                        pbar.update(total_mb)
+                            else:
+                                success = await coqui_engine.download_model(force=True)
                             if success:
                                 print(f"✅ Modelo descargado exitosamente!")
                             else:
                                 print(f"❌ Error en la descarga del modelo.")
-                                
+
                         elif choice == "2":
                             single_models = coqui_engine.get_single_language_models()
                             available_langs = sorted(single_models.keys())
-                            
+
                             print(f"\n🗣️  Idiomas disponibles:")
                             for i, lang in enumerate(available_langs, 1):
                                 print(f"   {i}. {lang}")
-                                
-                            lang_idx = input(f"\n   Seleccione idioma [1-{len(available_langs)}]: ").strip()
-                            
+
+                            lang_idx = input(
+                                f"\n   Seleccione idioma [1-{len(available_langs)}]: "
+                            ).strip()
+
                             try:
                                 idx = int(lang_idx) - 1
                                 if 0 <= idx < len(available_langs):
                                     selected_lang = available_langs[idx]
                                     models = single_models[selected_lang]
-                                    
+
                                     success = False
                                     for model_name in models:
-                                        print(f"\n⬇️  Intentando descargar modelo: {model_name}...")
-                                        if await coqui_engine.download_model(model_name=model_name, force=True):
-                                            print(f"✅ Modelo para {selected_lang} descargado exitosamente!")
+                                        print(
+                                            f"\n⬇️  Intentando descargar modelo: {model_name}..."
+                                        )
+                                        if await coqui_engine.download_model(
+                                            model_name=model_name, force=True
+                                        ):
+                                            print(
+                                                f"✅ Modelo para {selected_lang} descargado exitosamente!"
+                                            )
                                             print(f"💡 Para usar este modelo:")
-                                            print(f"   tts-notify --engine coqui --model \"{model_name}\" ...")
+                                            print(
+                                                f'   tts-notify --engine coqui --model "{model_name}" ...'
+                                            )
                                             success = True
                                             break
                                         else:
-                                            print(f"⚠️  Fallo la descarga de {model_name}, intentando siguiente...")
-                                    
+                                            print(
+                                                f"⚠️  Fallo la descarga de {model_name}, intentando siguiente..."
+                                            )
+
                                     if not success:
-                                        print(f"❌ No se pudo descargar ningún modelo para {selected_lang}.")
+                                        print(
+                                            f"❌ No se pudo descargar ningún modelo para {selected_lang}."
+                                        )
                                 else:
                                     print("❌ Selección inválida.")
                             except ValueError:
@@ -1214,9 +1536,11 @@ Installation & Testing:
 
                         elif choice == "3":
                             print("\nℹ️  Omitiendo descarga de modelos adicionales.")
-                            
+
                         else:
-                            print(f"\n❌ Opción no válida: '{choice}'. Seleccione 1, 2 o 3.")
+                            print(
+                                f"\n❌ Opción no válida: '{choice}'. Seleccione 1, 2 o 3."
+                            )
                 except Exception as e:
                     print(f"⚠️  Error en selección de idiomas: {e}")
 
@@ -1276,7 +1600,7 @@ Installation & Testing:
             if test_results["overall_success"]:
                 print("¡Sistema completamente funcional!")
                 print(f"\n💡 Prueba las características:")
-                print(f"   tts-notify --engine coqui \"Test en francés\" --language fr")
+                print(f'   tts-notify --engine coqui "Test en francés" --language fr')
                 print(f"   tts-notify --process-audio audio.wav --output-format mp3")
                 print(f"   tts-notify --pipeline-status")
             else:
@@ -1331,7 +1655,9 @@ Installation & Testing:
             print(f"   • Plataforma: {status['platform']}")
 
             print(f"\n🤖 CoquiTTS:")
-            coqui_status = "✅ Instalado" if status["coqui_tts_installed"] else "❌ No instalado"
+            coqui_status = (
+                "✅ Instalado" if status["coqui_tts_installed"] else "❌ No instalado"
+            )
             print(f"   • Estado: {coqui_status}")
             if status["coqui_tts_installed"]:
                 try:
@@ -1347,7 +1673,9 @@ Installation & Testing:
                 print(f"   • {dep_name}: {status_icon}")
 
             print(f"\n🎬 FFmpeg:")
-            ffmpeg_status = "✅ Disponible" if status["ffmpeg_available"] else "❌ No disponible"
+            ffmpeg_status = (
+                "✅ Disponible" if status["ffmpeg_available"] else "❌ No disponible"
+            )
             print(f"   • Estado: {ffmpeg_status}")
 
             # Recommendations
@@ -1356,7 +1684,9 @@ Installation & Testing:
                 print(f"   • Instalar CoquiTTS: tts-notify --install-coqui")
 
             if not all(audio_deps.values()):
-                missing = [dep for dep, installed in audio_deps.items() if not installed]
+                missing = [
+                    dep for dep, installed in audio_deps.items() if not installed
+                ]
                 print(f"   • Instalar dependencias: tts-notify --install-deps")
                 print(f"     Faltantes: {', '.join(missing)}")
 
@@ -1364,34 +1694,54 @@ Installation & Testing:
                 print(f"   • Instalar FFmpeg: tts-notify --install-ffmpeg")
 
             if status["coqui_tts_installed"] and all(audio_deps.values()):
-                print(f"   • Sistema listo: tts-notify --engine coqui \"Prueba\"")
+                print(f'   • Sistema listo: tts-notify --engine coqui "Prueba"')
 
         except Exception as e:
             print(f"❌ Error obteniendo estado: {e}")
 
-    async def speak_text(self, text: str, voice: Optional[str] = None,
-                        rate: Optional[int] = None, pitch: Optional[float] = None,
-                        volume: Optional[float] = None, engine: Optional[str] = None,
-                        model: Optional[str] = None, language: Optional[str] = None,
-                        force_language: bool = False) -> None:
+    async def speak_text(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        engine: Optional[str] = None,
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        force_language: bool = False,
+        emotion: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> None:
         """Speak text using TTS engine (v3.0.0 with CoquiTTS support)"""
         try:
-            # Initialize engines first
             await self.initialize_engines()
-
-            # Get configuration
             config = self.config_manager.get_config()
-
-            # Determine engine to use
             engine_name = engine or config.TTS_NOTIFY_ENGINE
 
             if engine_name == "coqui":
-                await self._speak_with_coqui(text, voice, rate, pitch, volume, model, language, force_language, config)
+                await self._speak_with_coqui(
+                    text,
+                    voice,
+                    rate,
+                    pitch,
+                    volume,
+                    model,
+                    language,
+                    force_language,
+                    config,
+                    emotion,
+                    temperature,
+                )
             else:
-                # Default to macOS engine
                 await self._speak_with_macos(text, voice, rate, pitch, volume, config)
 
-        except (VoiceNotFoundError, ValidationError, TTSError, EngineNotAvailableError) as e:
+        except (
+            VoiceNotFoundError,
+            ValidationError,
+            TTSError,
+            EngineNotAvailableError,
+        ) as e:
             print(f"Error: {e}")
             sys.exit(1)
         except Exception as e:
@@ -1400,9 +1750,15 @@ Installation & Testing:
                 self.logger.exception("Unexpected error in speak_text")
             sys.exit(1)
 
-    async def _speak_with_macos(self, text: str, voice: Optional[str] = None,
-                               rate: Optional[int] = None, pitch: Optional[float] = None,
-                               volume: Optional[float] = None, config=None) -> None:
+    async def _speak_with_macos(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        config=None,
+    ) -> None:
         """Speak text using macOS TTS engine"""
         try:
             # Get voice from voice manager
@@ -1418,7 +1774,7 @@ Installation & Testing:
                 rate=rate or config.TTS_NOTIFY_RATE,
                 pitch=pitch or config.TTS_NOTIFY_PITCH,
                 volume=volume or config.TTS_NOTIFY_VOLUME,
-                output_format=AudioFormat.AIFF
+                output_format=AudioFormat.AIFF,
             )
 
             # Use engine registry
@@ -1427,7 +1783,9 @@ Installation & Testing:
 
             if response.success:
                 if self.logger:
-                    self.logger.info(f"Text spoken successfully with macOS engine: {text[:50]}...")
+                    self.logger.info(
+                        f"Text spoken successfully with macOS engine: {text[:50]}..."
+                    )
                 engine_used = f"macOS ({voice_obj.name})"
                 print(f"✅ Texto reproducido con motor: {engine_used}")
             else:
@@ -1437,52 +1795,62 @@ Installation & Testing:
         except Exception as e:
             # Fallback to direct subprocess if engine fails
             import subprocess
+
             voice_to_use = voice or config.TTS_NOTIFY_VOICE
             rate_to_use = str(rate or config.TTS_NOTIFY_RATE)
 
-            cmd = ['say', '-v', voice_to_use, '-r', rate_to_use]
+            cmd = ["say", "-v", voice_to_use, "-r", rate_to_use]
             cmd.append(text)
 
             result = subprocess.run(cmd, capture_output=True, text=True)
 
             if result.returncode == 0:
-                print(f"✅ Texto reproducido con voz: {voice_to_use} (fallback directo)")
+                print(
+                    f"✅ Texto reproducido con voz: {voice_to_use} (fallback directo)"
+                )
             else:
                 print(f"❌ Error: {result.stderr}")
                 sys.exit(1)
 
-    async def _speak_with_coqui(self, text: str, voice: Optional[str] = None,
-                              rate: Optional[int] = None, pitch: Optional[float] = None,
-                              volume: Optional[float] = None, model: Optional[str] = None,
-                              language: Optional[str] = None, force_language: bool = False,
-                              config=None) -> None:
-        """Speak text using CoquiTTS engine"""
+    async def _speak_with_coqui(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        force_language: bool = False,
+        config=None,
+        emotion: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> None:
+        """Speak text using CoquiTTS engine with emotion support"""
         try:
             coqui_engine = engine_registry.get("coqui")
             if not coqui_engine:
-                print("❌ Motor CoquiTTS no disponible. Instale con: pip install coqui-tts")
+                print(
+                    "❌ Motor CoquiTTS no disponible. Instale con: pip install coqui-tts"
+                )
                 sys.exit(1)
 
-            # For CoquiTTS, we need to handle voice differently since it uses speaker names
-            # For now, we'll use the default voice from the engine
             voices = await coqui_engine.get_supported_voices()
             voice_obj = None
 
             if voice:
-                # Try to find matching voice in CoquiTTS voices
                 for v in voices:
                     if v.name.lower() == voice.lower() or v.id.lower() == voice.lower():
                         voice_obj = v
                         break
 
             if not voice_obj and voices:
-                voice_obj = voices[0]  # Use first available voice
+                voice_obj = voices[0]
 
             if not voice_obj:
                 print("❌ No hay voces CoquiTTS disponibles")
                 sys.exit(1)
 
-            # Create TTS request with CoquiTTS specific parameters
             request = TTSRequest(
                 text=text,
                 voice=voice_obj,
@@ -1494,17 +1862,25 @@ Installation & Testing:
                 force_language=force_language,
                 model_name=model or config.TTS_NOTIFY_COQUI_MODEL,
                 auto_download=config.TTS_NOTIFY_AUTO_DOWNLOAD_MODELS,
-                output_format=AudioFormat.WAV  # CoquiTTS typically uses WAV
+                output_format=AudioFormat.WAV,
             )
 
-            response = await coqui_engine.speak(request)
+            if emotion and hasattr(coqui_engine, "synthesize"):
+                response = await coqui_engine.synthesize(request, emotion=emotion)
+            else:
+                response = await coqui_engine.speak(request)
 
             if response.success:
                 if self.logger:
-                    self.logger.info(f"Text spoken successfully with CoquiTTS: {text[:50]}...")
+                    self.logger.info(
+                        f"Text spoken successfully with CoquiTTS: {text[:50]}..."
+                    )
                 engine_used = f"CoquiTTS ({voice_obj.name})"
                 lang_used = language or "auto"
-                print(f"✅ Texto reproducido con motor: {engine_used} [idioma: {lang_used}]")
+                emotion_info = f" [emocion: {emotion}]" if emotion else ""
+                print(
+                    f"✅ Texto reproducido con motor: {engine_used} [idioma: {lang_used}]{emotion_info}"
+                )
             else:
                 print(f"❌ Error CoquiTTS: {response.error}")
                 sys.exit(1)
@@ -1512,42 +1888,71 @@ Installation & Testing:
         except Exception as e:
             print(f"❌ Error con motor CoquiTTS: {e}")
             if "No module named 'TTS'" in str(e):
-                print("   💡 Instale CoquiTTS: pip install coqui-tts torchaudio soundfile")
+                print(
+                    "   💡 Instale CoquiTTS: pip install coqui-tts torchaudio soundfile"
+                )
             sys.exit(1)
 
-    async def save_audio(self, text: str, filename: str, voice: Optional[str] = None,
-                        rate: Optional[int] = None, pitch: Optional[float] = None,
-                        volume: Optional[float] = None, audio_format: str = "aiff",
-                        engine: Optional[str] = None, model: Optional[str] = None,
-                        language: Optional[str] = None, force_language: bool = False) -> None:
+    async def save_audio(
+        self,
+        text: str,
+        filename: str,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        audio_format: str = "aiff",
+        engine: Optional[str] = None,
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        force_language: bool = False,
+        emotion: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> None:
         """Save text as audio file (v3.0.0 with CoquiTTS support)"""
         try:
-            # Initialize engines first
             await self.initialize_engines()
-
-            # Get configuration
             config = self.config_manager.get_config()
 
-            # Determine output path
             output_path = Path(filename)
             if not output_path.suffix:
                 output_path = output_path.with_suffix(f".{audio_format}")
 
             if not output_path.is_absolute():
-                output_dir = Path(getattr(config, 'TTS_NOTIFY_OUTPUT_DIR', Path.home() / "Desktop"))
+                output_dir = Path(
+                    getattr(config, "TTS_NOTIFY_OUTPUT_DIR", Path.home() / "Desktop")
+                )
                 output_path = output_dir / output_path
 
-            # Determine engine to use
             engine_name = engine or config.TTS_NOTIFY_ENGINE
 
             if engine_name == "coqui":
-                await self._save_with_coqui(text, output_path, voice, rate, pitch, volume,
-                                         audio_format, model, language, force_language, config)
+                await self._save_with_coqui(
+                    text,
+                    output_path,
+                    voice,
+                    rate,
+                    pitch,
+                    volume,
+                    audio_format,
+                    model,
+                    language,
+                    force_language,
+                    config,
+                    emotion,
+                    temperature,
+                )
             else:
-                await self._save_with_macos(text, output_path, voice, rate, pitch, volume,
-                                          audio_format, config)
+                await self._save_with_macos(
+                    text, output_path, voice, rate, pitch, volume, audio_format, config
+                )
 
-        except (VoiceNotFoundError, ValidationError, TTSError, EngineNotAvailableError) as e:
+        except (
+            VoiceNotFoundError,
+            ValidationError,
+            TTSError,
+            EngineNotAvailableError,
+        ) as e:
             print(f"Error: {e}")
             sys.exit(1)
         except Exception as e:
@@ -1556,10 +1961,17 @@ Installation & Testing:
                 self.logger.exception("Unexpected error in save_audio")
             sys.exit(1)
 
-    async def _save_with_macos(self, text: str, output_path: Path, voice: Optional[str] = None,
-                              rate: Optional[int] = None, pitch: Optional[float] = None,
-                              volume: Optional[float] = None, audio_format: str = "aiff",
-                              config=None) -> None:
+    async def _save_with_macos(
+        self,
+        text: str,
+        output_path: Path,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        audio_format: str = "aiff",
+        config=None,
+    ) -> None:
         """Save audio using macOS TTS engine"""
         try:
             # Get voice from voice manager
@@ -1576,7 +1988,7 @@ Installation & Testing:
                 pitch=pitch or config.TTS_NOTIFY_PITCH,
                 volume=volume or config.TTS_NOTIFY_VOLUME,
                 output_format=AudioFormat(audio_format),
-                output_path=output_path
+                output_path=output_path,
             )
 
             # Use engine registry
@@ -1595,19 +2007,31 @@ Installation & Testing:
             print(f"❌ Error guardando audio con macOS: {e}")
             sys.exit(1)
 
-    async def _save_with_coqui(self, text: str, output_path: Path, voice: Optional[str] = None,
-                             rate: Optional[int] = None, pitch: Optional[float] = None,
-                             volume: Optional[float] = None, audio_format: str = "wav",
-                             model: Optional[str] = None, language: Optional[str] = None,
-                             force_language: bool = False, config=None) -> None:
-        """Save audio using CoquiTTS engine"""
+    async def _save_with_coqui(
+        self,
+        text: str,
+        output_path: Path,
+        voice: Optional[str] = None,
+        rate: Optional[int] = None,
+        pitch: Optional[float] = None,
+        volume: Optional[float] = None,
+        audio_format: str = "wav",
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        force_language: bool = False,
+        config=None,
+        emotion: Optional[str] = None,
+        temperature: Optional[float] = None,
+    ) -> None:
+        """Save audio using CoquiTTS engine with emotion support"""
         try:
             coqui_engine = engine_registry.get("coqui")
             if not coqui_engine:
-                print("❌ Motor CoquiTTS no disponible. Instale con: pip install coqui-tts")
+                print(
+                    "❌ Motor CoquiTTS no disponible. Instale con: pip install coqui-tts"
+                )
                 sys.exit(1)
 
-            # Get CoquiTTS voice (similar to _speak_with_coqui)
             voices = await coqui_engine.get_supported_voices()
             voice_obj = None
 
@@ -1624,7 +2048,6 @@ Installation & Testing:
                 print("❌ No hay voces CoquiTTS disponibles")
                 sys.exit(1)
 
-            # Create TTS request with CoquiTTS parameters
             request = TTSRequest(
                 text=text,
                 voice=voice_obj,
@@ -1637,14 +2060,22 @@ Installation & Testing:
                 model_name=model or config.TTS_NOTIFY_COQUI_MODEL,
                 auto_download=config.TTS_NOTIFY_AUTO_DOWNLOAD_MODELS,
                 output_format=AudioFormat(audio_format),
-                output_path=output_path
+                output_path=output_path,
             )
 
-            response = await coqui_engine.save(request, output_path)
+            if emotion and hasattr(coqui_engine, "synthesize"):
+                response = await coqui_engine.synthesize(request, emotion=emotion)
+                if response.success and response.audio_data:
+                    output_path.write_bytes(response.audio_data)
+            else:
+                response = await coqui_engine.save(request, output_path)
 
             if response.success:
                 lang_used = language or "auto"
-                print(f"✅ Audio guardado en: {output_path} (CoquiTTS [idioma: {lang_used}])")
+                emotion_info = f" [emocion: {emotion}]" if emotion else ""
+                print(
+                    f"✅ Audio guardado en: {output_path} (CoquiTTS [idioma: {lang_used}]{emotion_info})"
+                )
                 if self.logger:
                     self.logger.info(f"Audio saved with CoquiTTS engine: {output_path}")
             else:
@@ -1654,7 +2085,9 @@ Installation & Testing:
         except Exception as e:
             print(f"❌ Error guardando audio con CoquiTTS: {e}")
             if "No module named 'TTS'" in str(e):
-                print("   💡 Instale CoquiTTS: pip install coqui-tts torchaudio soundfile")
+                print(
+                    "   💡 Instale CoquiTTS: pip install coqui-tts torchaudio soundfile"
+                )
             sys.exit(1)
 
     def show_mcp_config(self) -> None:
@@ -1666,7 +2099,9 @@ Installation & Testing:
 
         try:
             # Get the current Python executable path
-            if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+            if hasattr(sys, "real_prefix") or (
+                hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
+            ):
                 # Virtual environment detected
                 python_exe = sys.executable
             else:
@@ -1675,7 +2110,13 @@ Installation & Testing:
                 venv_paths = [
                     project_root / "src" / "venv" / "bin" / "python",
                     project_root / "venv" / "bin" / "python",
-                    Path.home() / ".local" / "share" / "tts-notify" / "venv" / "bin" / "python",
+                    Path.home()
+                    / ".local"
+                    / "share"
+                    / "tts-notify"
+                    / "venv"
+                    / "bin"
+                    / "python",
                 ]
 
                 python_exe = None
@@ -1692,7 +2133,9 @@ Installation & Testing:
             mcp_server_paths = [
                 current_dir / "src" / "tts_notify" / "ui" / "mcp" / "server.py",
                 current_dir / "src" / "mcp_server.py",
-                Path("/Volumes/Resources/Develop/TTS-Notify/TTS_Notify/src/tts_notify/ui/mcp/server.py"),
+                Path(
+                    "/Volumes/Resources/Develop/TTS-Notify/TTS_Notify/src/tts_notify/ui/mcp/server.py"
+                ),
             ]
 
             mcp_server_path = None
@@ -1710,7 +2153,7 @@ Installation & Testing:
                 "mcpServers": {
                     "tts-notify": {
                         "command": python_exe,
-                        "args": ["-m", "tts_notify", "--mode", "mcp"]
+                        "args": ["-m", "tts_notify", "--mode", "mcp"],
                     }
                 }
             }
@@ -1774,8 +2217,9 @@ Installation & Testing:
             await self.clone_voice(
                 audio_file=args.clone_voice,
                 voice_name=args.voice_name,
-                language=args.clone_language,
-                quality=args.clone_quality
+                language=args.clone_language or args.language,
+                quality=args.clone_quality,
+                max_sample_duration=args.max_sample_duration,
             )
             return
 
@@ -1846,7 +2290,7 @@ Installation & Testing:
                 input_file=args.process_audio,
                 output_format=args.output_format,
                 target_language=args.target_language,
-                audio_quality=args.audio_quality
+                audio_quality=args.audio_quality,
             )
             return
 
@@ -1856,7 +2300,7 @@ Installation & Testing:
                 compact=args.compact,
                 gender=args.gen,
                 language=args.lang,
-                engine=args.engine
+                engine=args.engine,
             )
             return
 
@@ -1865,6 +2309,9 @@ Installation & Testing:
             if not args.text:
                 print("Error: Se requiere texto para guardar archivo de audio")
                 sys.exit(1)
+            engine = args.engine
+            if args.xtts:
+                engine = "coqui"
             await self.save_audio(
                 text=args.text,
                 filename=args.save,
@@ -1873,25 +2320,32 @@ Installation & Testing:
                 pitch=args.pitch,
                 volume=args.volume,
                 audio_format=args.format,
-                engine=args.engine,
+                engine=engine,
                 model=args.model,
                 language=args.language,
-                force_language=args.force_language
+                force_language=args.force_language,
+                emotion=args.emotion,
+                temperature=args.temperature,
             )
             return
 
         # Handle speak command with CoquiTTS support
         if args.text:
+            engine = args.engine
+            if args.xtts:
+                engine = "coqui"
             await self.speak_text(
                 text=args.text,
                 voice=args.voice,
                 rate=args.rate,
                 pitch=args.pitch,
                 volume=args.volume,
-                engine=args.engine,
+                engine=engine,
                 model=args.model,
                 language=args.language,
-                force_language=args.force_language
+                force_language=args.force_language,
+                emotion=args.emotion,
+                temperature=args.temperature,
             )
             return
 

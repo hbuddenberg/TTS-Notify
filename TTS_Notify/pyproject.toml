@@ -7,7 +7,7 @@ name = "tts-notify"
 version = "3.0.0"
 description = "Modular Text-to-Speech notification system for macOS with CLI, MCP, REST API, and CoquiTTS AI-powered voices"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.12"
 license = "MIT"
 keywords = ["tts", "text-to-speech", "macos", "voice", "speech", "audio", "cli", "mcp", "api", "notifications", "claude-desktop", "coqui-tts", "ai-voices", "multi-language"]
 authors = [
@@ -29,8 +29,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
@@ -46,9 +44,14 @@ dependencies = [
 
 # Optional dependencies for different installation modes
 [project.optional-dependencies]
-# MCP server mode
+# MCP server mode (legacy)
 mcp = [
     "mcp>=1.0.0",
+]
+
+# FastMCP server mode (NEW in v3.1.0 - recommended)
+fastmcp = [
+    "fastmcp>=2.0.0",
 ]
 
 # REST API mode
@@ -87,6 +90,7 @@ coqui-cloning = [
     "librosa>=0.10.0",
     "numpy>=1.24.0",
     "scipy>=1.10.0",
+    "noisereduce>=2.0.0",
 ]
 
 # Voice Cloning with GPU support
@@ -97,6 +101,7 @@ coqui-cloning-gpu = [
     "librosa>=0.10.0",
     "numpy>=1.24.0",
     "scipy>=1.10.0",
+    "noisereduce>=2.0.0",
 ]
 
 # Phase C: Audio Pipeline support
@@ -131,6 +136,7 @@ dev = [
     "isort>=5.12.0",
     "flake8>=6.0.0",
     "mypy>=1.0.0",
+    "tqdm>=4.65.0",
 ]
 
 # Development with CoquiTTS support
